@@ -949,7 +949,6 @@ function formatDate(s){
   if(diff===1) return "明天";
   if(diff===-1) return "昨天";
   if(diff>0 && diff<=7) return `${diff}天后`;
-  if(diff<0) return `逾期${-diff}天`;
   const[y,m,d]=s.split('-').map(Number);
   return `${m}月${d}日`;
 }
@@ -2022,11 +2021,13 @@ function openVideoModal(id){
   // 渠道勾选列表
   const chChecks = client.channels.map(ch=>{
     const s = v.channelStates[ch.id] || {selected:false, published:false, publishDate:""};
+    // 渠道显示的日期：优先用渠道自己的 publishDate，没有就用排期日期
+    const displayDate = s.publishDate || (s.selected ? (v.scheduledDate || "") : "");
     return `<div class="ch-check ${s.selected?"active":""}" data-ch-id="${ch.id}" onclick="toggleChannel(this)">
       <div class="box">${s.selected?"✓":""}</div>
       <div class="name">${esc(ch.name)}${ch.url?` <span style="font-size:11px;cursor:pointer" onclick="event.stopPropagation();window.open('${esc(ch.url)}','_blank')">🔗</span>`:""}</div>
-      <div class="date">${s.publishDate || "未发"}</div>
-      ${s.selected?`<input class="date-input" type="date" value="${s.publishDate||""}" onclick="event.stopPropagation()" onchange="updateChannelDate('${ch.id}', this.value)" title="发布日期">`:""}
+      <div class="date">${displayDate || "未发"}</div>
+      ${s.selected?`<input class="date-input" type="date" value="${displayDate||""}" onclick="event.stopPropagation()" onchange="updateChannelDate('${ch.id}', this.value)" title="发布日期（不填则用排期日期）">`:""}
     </div>`;
   }).join("");
   
@@ -2083,7 +2084,10 @@ function openVideoModal(id){
       </div>
       <div class="fg">
         <label class="fl">排期日期（整体）</label>
-        <input class="fi" id="vDate" type="date" value="${v.scheduledDate||""}">
+        <div style="display:flex;gap:8px;align-items:center">
+          <input class="fi" id="vDate" type="date" value="${v.scheduledDate||""}" style="flex:1">
+          ${v.scheduledDate ? `<button class="btn btn-secondary" style="padding:8px 14px;font-size:12px;white-space:nowrap" onclick="clearVideoDate()">清除日期</button>` : ""}
+        </div>
       </div>
       <div class="fg">
         <label class="fl">发布渠道（点击勾选，可各自设发布日）</label>
@@ -2110,6 +2114,14 @@ function openVideoModal(id){
 function pickStatus(el){
   document.querySelectorAll("#statusRow .sel-btn").forEach(b=>b.classList.remove("active"));
   el.classList.add("active");
+}
+
+function clearVideoDate(){
+  document.getElementById("vDate").value = "";
+  // 同时清除渠道的日期
+  document.querySelectorAll("#chChecks .ch-check .date-input").forEach(inp=>{ inp.value = ""; });
+  document.querySelectorAll("#chChecks .ch-check .date").forEach(el=>{ el.textContent = "未发"; });
+  showToast("已清除排期日期");
 }
 
 function toggleChannel(el){
@@ -2179,7 +2191,15 @@ function saveVideo(){
       const chId = el.dataset.chId;
       const selected = el.classList.contains("active");
       const dateInput = el.querySelector(".date-input");
-      const publishDate = dateInput ? (dateInput.value || "") : "";
+      // 渠道日期：如果渠道单独设了日期就用单独的，否则用排期日期
+      let publishDate = "";
+      if(selected){
+        if(dateInput && dateInput.value){
+          publishDate = dateInput.value;
+        } else if(scheduledDate){
+          publishDate = scheduledDate;
+        }
+      }
       channelStates[chId] = {
         selected: selected,
         published: selected && publishDate !== "",
