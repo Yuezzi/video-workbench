@@ -1,0 +1,14 @@
+{
+  "name": "视频运营工作台",
+  "short_name": "运营台",
+  "description": "客户视频发布管理 · 多平台追踪 · 智能排期",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f5f7fa",
+  "theme_color": "#4f7cff",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

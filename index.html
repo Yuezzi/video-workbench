@@ -1,0 +1,3333 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="运营台">
+<meta name="theme-color" content="#4f7cff">
+<meta name="mobile-web-app-capable" content="yes">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<title>视频运营工作台</title>
+<style>
+:root{
+  --bg:#fffaf3;--card:rgba(255,255,255,0.42);--card-solid:#fff;--text:#3d2e1f;--t2:#6b5440;--t3:#9a7b5e;
+  --border:rgba(255,255,255,0.65);--border2:rgba(180,140,100,0.15);
+  --primary:#6ba4d9;--primary-bg:rgba(107,164,217,0.12);--primary2:#5a8db8;
+  --success:#7fb88e;--success-bg:rgba(127,184,142,0.15);
+  --warning:#d4915c;--warning-bg:rgba(212,145,92,0.12);
+  --danger:#e87a8f;--danger-bg:rgba(232,122,143,0.12);--danger-border:rgba(255,154,162,0.35);
+  --purple:#9b7bd4;--purple-bg:rgba(155,123,212,0.12);
+  --brown:#d4a373;--brown-bg:rgba(212,163,115,0.12);
+  --shadow-sm:0 4px 16px rgba(180,140,100,0.06);
+  --shadow-md:0 8px 32px rgba(180,140,100,0.1);
+  --glass:blur(28px) saturate(180%);
+  --r:24px;--rs:16px;--rl:28px;
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
+}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Helvetica Neue","Segoe UI","Microsoft YaHei",sans-serif;background:radial-gradient(circle at 12% 5%,rgba(255,214,224,0.45) 0%,transparent 30%),radial-gradient(circle at 88% 10%,rgba(200,231,255,0.45) 0%,transparent 30%),radial-gradient(circle at 50% 50%,rgba(255,229,200,0.3) 0%,transparent 35%),linear-gradient(165deg,#fffaf3,#fef5ec);color:var(--text);font-size:15px;line-height:1.5;-webkit-font-smoothing:antialiased;user-select:none}
+body.has-bg::before{content:"";position:fixed;inset:0;z-index:-2;background-size:cover;background-position:center;background-repeat:no-repeat}
+body.has-bg::after{content:"";position:fixed;inset:0;z-index:-1;background:linear-gradient(180deg,rgba(255,250,243,0.35) 0%,rgba(255,250,243,0.55) 100%);backdrop-filter:blur(2px)}
+input,textarea,select{font-family:inherit;font-size:inherit;user-select:text}
+button{font-family:inherit;cursor:pointer;border:none;background:none;color:inherit}
+
+.app{display:flex;flex-direction:column;height:100%;max-width:680px;margin:0 auto;position:relative}
+
+/* Header - 玻璃质感 */
+.header{flex-shrink:0;padding:calc(14px + var(--safe-top)) 16px 12px;background:rgba(255,255,255,0.45);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;z-index:10;box-shadow:0 4px 24px rgba(180,140,100,0.06)}
+.header-title{font-size:19px;font-weight:800;letter-spacing:-.3px;color:#5a3e2b}
+.header-sub{font-size:12px;color:var(--t3);margin-top:2px;font-weight:500}
+.icon-btn{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,0.5);border:1px solid rgba(255,255,255,0.6);color:var(--brown);font-size:18px;transition:transform .1s;box-shadow:var(--shadow-sm)}
+.icon-btn:active{transform:scale(.92)}
+
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px 14px 100px}
+
+/* Stats - Bento 小卡片 */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:14px}
+.stat{background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:16px 8px;text-align:center;box-shadow:var(--shadow-md),inset 0 1px 0 rgba(255,255,255,0.9)}
+.stat-v{font-size:26px;font-weight:800;letter-spacing:-.5px;line-height:1.1}
+.stat-l{font-size:11px;color:var(--t3);margin-top:3px;font-weight:600}
+.stat.primary .stat-v{color:var(--primary)}
+.stat.warning .stat-v{color:var(--warning)}
+.stat.danger .stat-v{color:var(--danger)}
+
+/* Section */
+.section{margin-bottom:20px}
+.section-h{display:flex;align-items:center;justify-content:space-between;margin:0 4px 10px}
+.section-t{font-size:15px;font-weight:700;display:flex;align-items:center;gap:8px;color:#5a3e2b}
+.section-t .cnt{font-size:11px;font-weight:700;color:var(--t3);background:rgba(255,255,255,0.5);padding:3px 10px;border-radius:12px;border:1px solid var(--border)}
+.section-a{font-size:13px;color:var(--primary);font-weight:600;padding:4px 8px}
+
+/* Alert - 珊瑚粉玻璃 */
+.alert{background:linear-gradient(135deg,rgba(255,154,162,0.3),rgba(255,180,170,0.2));backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--danger-border);border-radius:var(--r);padding:14px 16px;margin-bottom:14px;display:flex;align-items:flex-start;gap:12px;box-shadow:0 8px 32px rgba(255,138,128,0.15),inset 0 1px 0 rgba(255,255,255,0.6)}
+.alert-icon{font-size:20px;flex-shrink:0;margin-top:1px}
+.alert-c{flex:1;min-width:0}
+.alert-tt{font-weight:700;font-size:14px;margin-bottom:2px;color:#c25a6f}
+.alert-tx{font-size:12px;color:var(--t2);line-height:1.4}
+
+/* Today task card */
+.task-row{background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:12px 14px;margin-bottom:8px;box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,0.8);display:flex;align-items:center;gap:12px;transition:transform .1s}
+.task-row:active{transform:scale(.985)}
+.task-row .tag{font-size:11px;font-weight:700;padding:4px 9px;border-radius:8px;flex-shrink:0}
+.tag-publish{background:rgba(107,164,217,0.15);color:var(--primary2)}
+.tag-follow{background:rgba(212,145,92,0.15);color:#b87a4d}
+.tag-shoot{background:rgba(232,122,143,0.15);color:#c25a6f}
+.task-row .info{flex:1;min-width:0}
+.task-row .tt{font-weight:600;font-size:14px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.task-row .tx{font-size:12px;color:var(--t3);margin-top:2px}
+.task-row .go{color:#c4a882;font-size:18px;flex-shrink:0}
+
+/* Client card - 玻璃大卡片 */
+.client-card{background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:var(--rl);padding:18px;margin-bottom:12px;box-shadow:var(--shadow-md),inset 0 1px 0 rgba(255,255,255,0.9);transition:transform .1s;position:relative;overflow:hidden}
+.client-card:active{transform:scale(.985)}
+.client-card.alert{background:linear-gradient(135deg,rgba(255,200,200,0.3),rgba(255,220,220,0.2));border-color:var(--danger-border)}
+.client-card.alert::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#ff9aa2,#ff7a82);border-radius:5px 0 0 5px}
+.client-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.client-name{font-size:17px;font-weight:700;display:flex;align-items:center;gap:10px;color:var(--text)}
+.client-name .dot{width:14px;height:14px;border-radius:50%;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,0.1);border:2px solid rgba(255,255,255,0.6)}
+.client-actions{display:flex;gap:6px}
+.client-act{width:32px;height:32px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:14px;background:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.5)}
+.client-act:active{background:rgba(180,140,100,0.1)}
+.client-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.client-stat{background:rgba(255,255,255,0.35);border:1px solid rgba(255,255,255,0.4);border-radius:14px;padding:12px 6px;text-align:center}
+.client-stat .v{font-size:18px;font-weight:800;line-height:1}
+.client-stat .l{font-size:10px;color:var(--t3);margin-top:2px;font-weight:600}
+.client-stat.stock-low .v{color:var(--danger)}
+.client-alert-tag{display:inline-flex;align-items:center;gap:5px;background:rgba(255,154,162,0.12);color:#c25a6f;font-size:12px;font-weight:600;padding:5px 12px;border-radius:10px;margin-top:12px;border:1px solid rgba(255,154,162,0.2)}
+
+/* Channel badges */
+.channels{display:flex;gap:4px;flex-wrap:wrap;margin-top:8px}
+.ch{font-size:10px;font-weight:600;padding:2px 7px;border-radius:6px;display:flex;align-items:center;gap:3px}
+.ch.done{background:var(--success-bg);color:#5a9a6e}
+.ch.todo{background:rgba(255,255,255,0.4);color:var(--t3)}
+
+/* Status badge */
+.status{font-size:11px;font-weight:600;padding:2px 8px;border-radius:6px}
+.s-editing{background:var(--warning-bg);color:#b87a4d}
+.s-final{background:var(--purple-bg);color:var(--purple)}
+.s-pending{background:var(--primary-bg);color:var(--primary2)}
+.s-published{background:var(--success-bg);color:#5a9a6e}
+
+/* Progress bar */
+.prog{height:5px;background:rgba(255,255,255,0.4);border-radius:3px;margin-top:8px;overflow:hidden}
+.prog-fill{height:100%;background:var(--success);border-radius:3px;transition:width .3s}
+
+/* Video card */
+.video-card{background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:var(--rl);padding:14px;margin-bottom:8px;box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,0.8);transition:transform .1s}
+.video-card:active{transform:scale(.985)}
+.video-card.done{opacity:.7}
+.vc-top{display:flex;align-items:flex-start;gap:10px}
+.vc-thumb{width:44px;height:44px;border-radius:14px;flex-shrink:0;display:flex;align-items:center;justify-content:center;color:#fff;font-size:18px}
+.vc-thumb.editing{background:linear-gradient(135deg,#d4915c,#c4814a)}
+.vc-thumb.final{background:linear-gradient(135deg,#9b7bd4,#8268c4)}
+.vc-thumb.pending{background:linear-gradient(135deg,#6ba4d9,#5a8db8)}
+.vc-thumb.published{background:linear-gradient(135deg,#7fb88e,#6aa87a)}
+.vc-info{flex:1;min-width:0}
+.vc-title{font-weight:600;font-size:14px;word-break:break-word;color:var(--text)}
+.vc-meta{display:flex;align-items:center;gap:8px;margin-top:4px;font-size:12px;color:var(--t3);flex-wrap:wrap}
+.vc-actions{display:flex;gap:4px;flex-shrink:0}
+.vc-act{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:14px;background:rgba(255,255,255,0.4)}
+.vc-act:active{background:rgba(180,140,100,0.1)}
+.vc-prog-text{font-size:11px;color:var(--t3);margin-top:4px}
+
+/* Empty */
+.empty{text-align:center;padding:40px 20px;color:var(--t3)}
+.empty-icon{font-size:36px;margin-bottom:8px;opacity:.5}
+.empty-text{font-size:14px}
+
+/* Bottom nav - 玻璃 */
+.nav{flex-shrink:0;display:flex;background:rgba(255,255,255,0.55);backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);border-top:1px solid var(--border);padding-bottom:var(--safe-bottom);height:calc(58px + var(--safe-bottom))}
+.nav-item{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--t3);font-size:11px;font-weight:500;transition:color .15s}
+.nav-item.active{color:var(--primary);font-weight:700}
+.nav-icon{font-size:20px;line-height:1}
+
+/* FAB */
+.fab{position:absolute;right:18px;bottom:calc(72px + var(--safe-bottom));width:54px;height:54px;border-radius:50%;background:linear-gradient(135deg,#d4a373,#c48a5c);color:#fff;font-size:26px;display:flex;align-items:center;justify-content:center;box-shadow:0 8px 24px rgba(196,138,92,0.4),inset 0 2px 0 rgba(255,255,255,0.3);z-index:20;transition:transform .15s;border:2px solid rgba(255,255,255,0.4)}
+.fab:active{transform:scale(.9)}
+
+/* Modal */
+.overlay{position:fixed;inset:0;background:rgba(120,90,60,0.3);backdrop-filter:blur(8px);z-index:100;display:flex;align-items:flex-end;justify-content:center;opacity:0;pointer-events:none;transition:opacity .2s}
+.overlay.show{opacity:1;pointer-events:auto}
+.modal{background:rgba(255,250,243,0.85);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border-radius:28px 28px 0 0;width:100%;max-width:680px;padding:20px 20px calc(20px + var(--safe-bottom));transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1);max-height:88vh;overflow-y:auto;border:1px solid var(--border);box-shadow:0 -8px 32px rgba(180,140,100,0.12)}
+.overlay.show .modal{transform:translateY(0)}
+.handle{width:36px;height:4px;background:rgba(180,140,100,0.2);border-radius:2px;margin:0 auto 14px}
+.modal-title{font-size:17px;font-weight:700;margin-bottom:14px;text-align:center;color:#5a3e2b}
+
+.fg{margin-bottom:12px}
+.fl{font-size:13px;font-weight:600;color:var(--t2);margin-bottom:5px;display:block}
+.fi,.ft,.fsel{width:100%;padding:11px 13px;border:1.5px solid var(--border2);border-radius:14px;background:rgba(255,255,255,0.5);color:var(--text);font-size:15px;outline:none;transition:border-color .15s}
+.fi:focus,.ft:focus,.fsel:focus{border-color:var(--primary);background:#fff}
+.ft{resize:none;min-height:70px}
+.fr{display:flex;gap:10px}
+.fr>.fg{flex:1}
+
+.sel-row{display:flex;gap:6px;flex-wrap:wrap}
+.sel-btn{flex:1;min-width:60px;padding:9px;border:1.5px solid var(--border2);border-radius:14px;background:rgba(255,255,255,0.4);font-size:13px;font-weight:600;color:var(--t2);text-align:center;transition:all .15s}
+.sel-btn.active{border-color:var(--primary);background:var(--primary-bg);color:var(--primary2)}
+
+/* Channel checkboxes */
+.ch-checks{display:flex;flex-direction:column;gap:8px}
+.ch-check{display:flex;align-items:center;gap:10px;padding:11px 12px;border:1.5px solid var(--border2);border-radius:14px;background:rgba(255,255,255,0.4);transition:all .15s}
+.ch-check.active{border-color:var(--success);background:var(--success-bg)}
+.ch-check .box{width:20px;height:20px;border-radius:6px;border:2px solid rgba(180,140,100,0.2);flex-shrink:0;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.ch-check.active .box{background:var(--success);border-color:var(--success);color:#fff;font-size:12px}
+.ch-check .name{font-size:14px;font-weight:600;flex:1;color:var(--text)}
+.ch-check .date{font-size:11px;color:var(--t3)}
+.ch-check .date-input{font-size:12px;border:1px solid var(--border2);border-radius:8px;padding:4px 6px;background:rgba(255,255,255,0.6);color:var(--text)}
+
+/* Channel manager */
+.ch-mgr-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--border2);border-radius:14px;background:rgba(255,255,255,0.4);margin-bottom:6px}
+.ch-mgr-item .name{flex:1;font-size:14px;font-weight:600}
+.ch-mgr-item .del{color:var(--danger);font-size:16px;width:28px;height:28px;display:flex;align-items:center;justify-content:center}
+
+.modal-actions{display:flex;gap:10px;margin-top:16px}
+.btn{flex:1;padding:12px;border-radius:14px;font-size:15px;font-weight:600;text-align:center;transition:transform .1s}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:linear-gradient(135deg,#d4a373,#c48a5c);color:#fff}
+.btn-secondary{background:rgba(180,140,100,0.15);color:var(--t2)}
+.btn-danger{background:var(--danger-bg);color:var(--danger)}
+.btn-success{background:var(--success);color:#fff}
+
+/* Toast */
+.toast{position:fixed;top:calc(16px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-100px);background:rgba(90,62,43,0.9);backdrop-filter:blur(20px);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:500;z-index:200;transition:transform .3s cubic-bezier(.32,.72,0,1);white-space:nowrap}
+.toast.show{transform:translateX(-50%) translateY(0)}
+
+/* Page */
+.page{display:none}.page.active{display:block}
+
+/* Calendar */
+.cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:4px;background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:var(--r);padding:10px;box-shadow:var(--shadow-sm);margin-bottom:14px}
+.cal-dow{text-align:center;font-size:11px;color:var(--t3);font-weight:600;padding:6px 0}
+.cal-day{aspect-ratio:1;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:13px;font-weight:500;position:relative;background:rgba(255,255,255,0.35);gap:2px}
+.cal-day.empty{background:transparent}
+.cal-day.today{background:var(--primary-bg);color:var(--primary);font-weight:700}
+.cal-day.has-task{background:linear-gradient(135deg,#d4a373,#c48a5c);color:#fff;font-weight:600}
+.cal-day.has-task.today{box-shadow:0 0 0 2px var(--brown)}
+.cal-day .dot{width:5px;height:5px;border-radius:50%;background:var(--success)}
+.cal-day.has-task .dot{background:#fff;opacity:.8}
+.cal-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;padding:0 4px}
+.cal-month{font-size:15px;font-weight:700;color:#5a3e2b}
+.cal-arrow{width:34px;height:34px;border-radius:12px;background:var(--card);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;color:var(--t2)}
+
+/* Schedule timeline */
+.tl-date{font-size:13px;font-weight:700;color:var(--t2);margin:14px 0 8px;padding-left:4px;display:flex;align-items:center;gap:8px}
+.tl-date:first-child{margin-top:0}
+.tl-date .dbadge{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px;background:var(--primary-bg);color:var(--primary2)}
+.tl-date.today .dbadge{background:var(--primary);color:#fff}
+
+/* Color picker */
+.color-picker{display:flex;gap:8px;flex-wrap:wrap}
+.color-opt{width:32px;height:32px;border-radius:50%;border:2px solid transparent;transition:all .15s}
+.color-opt.active{border-color:#5a3e2b;transform:scale(1.1)}
+
+/* Install hint */
+.install-hint{background:var(--primary-bg);border:1px solid rgba(107,164,217,0.25);border-radius:var(--r);padding:12px 14px;margin-bottom:14px;font-size:12px;color:var(--primary2);line-height:1.5}
+.install-hint b{display:block;margin-bottom:3px;font-size:13px}
+.install-hint .close{float:right;font-size:16px;line-height:1;color:var(--primary);padding:0 4px}
+
+/* Back header */
+.back-header{display:flex;align-items:center;gap:10px}
+.back-btn{width:34px;height:34px;border-radius:50%;background:rgba(255,255,255,0.4);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;color:var(--t2)}
+
+/* Settings */
+.settings-list{background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border-radius:var(--r);overflow:hidden;border:1px solid var(--border)}
+.s-item{padding:14px 16px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border2);font-size:15px;color:var(--text)}
+.s-item:last-child{border-bottom:none}
+.s-item:active{background:rgba(180,140,100,0.06)}
+.s-item-label{display:flex;align-items:center;gap:10px}
+.s-item-icon{font-size:17px;width:20px;text-align:center}
+.s-item-value{color:var(--t3);font-size:13px}
+.s-item.danger{color:var(--danger)}
+
+/* AI Assistant */
+.ai-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;padding:12px;border-radius:14px;background:linear-gradient(135deg,#9b7bd4,#8268c4);color:#fff;font-size:14px;font-weight:600;margin-top:10px;transition:transform .1s;box-shadow:0 4px 16px rgba(155,123,212,0.3)}
+.ai-btn:active{transform:scale(.97)}
+.ai-btn .icon{font-size:16px}
+
+.ai-modal-body{font-size:14px}
+.ai-tabs{display:flex;gap:6px;margin-bottom:14px;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:4px}
+.ai-tab{flex-shrink:0;padding:8px 14px;border:1.5px solid var(--border2);border-radius:20px;background:rgba(255,255,255,0.4);font-size:13px;font-weight:600;color:var(--t2);white-space:nowrap;transition:all .15s}
+.ai-tab.active{border-color:var(--purple);background:var(--purple-bg);color:var(--purple)}
+
+.ai-result{background:rgba(255,255,255,0.35);border:1px solid var(--border);border-radius:14px;padding:14px;font-size:14px;line-height:1.7;white-space:pre-wrap;word-break:break-word;max-height:300px;overflow-y:auto;margin-bottom:10px;color:var(--text)}
+.ai-result.empty{color:var(--t3);text-align:center;padding:30px 12px}
+.ai-loading{display:flex;align-items:center;justify-content:center;gap:8px;padding:20px;color:var(--t3);font-size:13px}
+.ai-loading .dots{display:flex;gap:3px}
+.ai-loading .dot{width:6px;height:6px;border-radius:50%;background:var(--purple);animation:dot-bounce 1.2s infinite}
+.ai-loading .dot:nth-child(2){animation-delay:.2s}
+.ai-loading .dot:nth-child(3){animation-delay:.4s}
+@keyframes dot-bounce{0%,80%,100%{transform:scale(.6);opacity:.5}40%{transform:scale(1);opacity:1}}
+
+.ai-prompt-input{width:100%;padding:11px 13px;border:1.5px solid var(--border2);border-radius:14px;background:rgba(255,255,255,0.5);font-size:14px;outline:none;transition:border-color .15s;min-height:60px;resize:vertical;font-family:inherit;color:var(--text)}
+.ai-prompt-input:focus{border-color:var(--purple);background:#fff}
+
+.ai-video-upload{border:2px dashed var(--border2);border-radius:14px;padding:20px;text-align:center;color:var(--t3);font-size:13px;cursor:pointer;transition:all .15s}
+.ai-video-upload:active{border-color:var(--purple);background:var(--purple-bg)}
+.ai-video-upload.has-file{border-color:var(--success);background:var(--success-bg);color:#5a9a6e}
+.ai-video-upload input{display:none}
+
+.ai-gen-actions{display:flex;gap:8px;margin-top:10px}
+.ai-gen-btn{flex:1;padding:10px;border-radius:12px;font-size:13px;font-weight:600;text-align:center;transition:transform .1s}
+.ai-gen-btn:active{transform:scale(.97)}
+.ai-gen-btn.primary{background:linear-gradient(135deg,#9b7bd4,#8268c4);color:#fff}
+.ai-gen-btn.secondary{background:rgba(180,140,100,0.15);color:var(--t2)}
+
+.ai-history{margin-top:12px;border-top:1px solid var(--border2);padding-top:12px}
+.ai-history-title{font-size:12px;color:var(--t3);margin-bottom:8px;font-weight:600}
+.ai-history-item{background:rgba(255,255,255,0.35);border-radius:12px;padding:10px;margin-bottom:6px;font-size:13px;line-height:1.5;cursor:pointer;border:1px solid var(--border2)}
+.ai-history-item:active{background:rgba(180,140,100,0.08)}
+.ai-history-item .type{font-size:11px;color:var(--purple);font-weight:600;margin-bottom:2px}
+.ai-history-item .preview{color:var(--t2);overflow:hidden;text-overflow:ellipsis;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+
+/* ============================================================
+   V3 Bento Grid - 首页液态玻璃模块布局
+   ============================================================ */
+.greeting{padding:6px 6px 14px;display:flex;align-items:center;justify-content:space-between}
+.greeting-text{font-size:13px;color:var(--t3);font-weight:500}
+.greeting-text b{font-size:20px;color:#5a3e2b;font-weight:800;display:block;margin-top:2px}
+.greeting-actions{display:flex;gap:8px}
+.greet-btn{width:42px;height:42px;border-radius:50%;background:rgba(255,255,255,0.5);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;font-size:18px;box-shadow:var(--shadow-sm),inset 0 1px 0 rgba(255,255,255,0.9);color:var(--brown)}
+.greet-btn:active{transform:scale(.92)}
+
+/* 6列网格 */
+.grid{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+
+/* 卡片基础 - 与 .card 共用玻璃质感 */
+.card{background:var(--card);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);box-shadow:var(--shadow-md),inset 0 1px 0 rgba(255,255,255,0.9);position:relative;overflow:hidden}
+
+/* 大数字卡 - 占3列 */
+.c-num{grid-column:span 3;border-radius:var(--r);padding:16px;transition:transform .1s}
+.c-num:active{transform:scale(.97)}
+.c-num-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.c-num-icon{width:36px;height:36px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:18px}
+.c-num-trend{font-size:10px;font-weight:700;padding:2px 6px;border-radius:6px}
+.c-num-v{font-size:30px;font-weight:800;letter-spacing:-1px;line-height:1}
+.c-num-l{font-size:11px;color:var(--t3);margin-top:3px;font-weight:600}
+.c-num.blue .c-num-icon{background:rgba(107,164,217,0.2)}
+.c-num.blue .c-num-v{color:var(--primary)}
+.c-num.blue .c-num-trend{background:rgba(107,164,217,0.15);color:var(--primary2)}
+.c-num.orange .c-num-icon{background:rgba(212,145,92,0.2)}
+.c-num.orange .c-num-v{color:var(--warning)}
+.c-num.orange .c-num-trend{background:rgba(212,145,92,0.15);color:#b87a4d}
+.c-num.pink .c-num-icon{background:rgba(232,122,143,0.2)}
+.c-num.pink .c-num-v{color:var(--danger)}
+.c-num.pink .c-num-trend{background:rgba(232,122,143,0.15);color:#c25a6f}
+
+/* 提醒卡 - 占6列 */
+.c-alert{grid-column:span 6;border-radius:var(--r);padding:16px;background:linear-gradient(135deg,rgba(255,154,162,0.3),rgba(255,180,170,0.2));border:1px solid var(--danger-border);display:flex;align-items:center;gap:14px;cursor:pointer;transition:transform .1s}
+.c-alert:active{transform:scale(.98)}
+.c-alert-icon{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#ff9aa2,#ff7a82);display:flex;align-items:center;justify-content:center;font-size:22px;color:#fff;flex-shrink:0;box-shadow:0 4px 16px rgba(255,122,130,0.3)}
+.c-alert-content{flex:1;min-width:0}
+.c-alert-title{font-size:14px;font-weight:700;color:#c25a6f;margin-bottom:2px}
+.c-alert-text{font-size:11px;color:var(--t2);line-height:1.4}
+.c-alert-go{color:#c25a6f;font-size:18px;flex-shrink:0}
+
+/* 今日待办 - 占6列 */
+.c-today{grid-column:span 6;border-radius:var(--rl);padding:18px}
+.c-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.c-title{font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px}
+.c-badge{font-size:10px;font-weight:700;color:var(--t3);background:rgba(255,255,255,0.5);padding:3px 10px;border-radius:10px;border:1px solid var(--border)}
+.c-more{font-size:11px;color:var(--primary);font-weight:600}
+
+/* 任务条（Bento版） */
+.t-row{display:flex;align-items:center;gap:10px;padding:11px 0;border-bottom:1px solid rgba(180,140,100,0.06);cursor:pointer}
+.t-row:last-child{border-bottom:none;padding-bottom:0}
+.t-row:first-child{padding-top:0}
+.t-row:active{opacity:.6}
+.t-tag{font-size:10px;font-weight:700;padding:4px 9px;border-radius:8px;flex-shrink:0;min-width:32px;text-align:center}
+.tt-blue{background:rgba(107,164,217,0.15);color:var(--primary2)}
+.tt-orange{background:rgba(212,145,92,0.15);color:#b87a4d}
+.tt-pink{background:rgba(232,122,143,0.15);color:#c25a6f}
+.tt-green{background:var(--success-bg);color:#5a9a6e}
+.t-info{flex:1;min-width:0}
+.t-tt{font-weight:600;font-size:13px;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t-tx{font-size:11px;color:var(--t3);margin-top:1px}
+.t-go{color:#c4a882;font-size:16px}
+
+/* 进度卡 - 占3列 */
+.c-progress{grid-column:span 3;border-radius:var(--r);padding:16px}
+.c-progress-title{font-size:12px;font-weight:700;color:var(--text);margin-bottom:12px;display:flex;align-items:center;gap:6px}
+.p-row{margin-bottom:10px}
+.p-row:last-child{margin-bottom:0}
+.p-top{display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px}
+.p-name{font-weight:600;color:var(--text)}
+.p-val{color:var(--t3)}
+.p-bar{height:5px;background:rgba(255,255,255,0.4);border-radius:3px;overflow:hidden}
+.p-fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* 客户卡 - 占6列（Bento版） */
+.c-client{grid-column:span 6;border-radius:var(--rl);padding:18px;cursor:pointer;transition:transform .1s}
+.c-client:active{transform:scale(.98)}
+.c-client.alert{background:linear-gradient(135deg,rgba(255,200,200,0.3),rgba(255,220,220,0.2));border-color:rgba(255,154,162,0.3)}
+.c-client.alert::before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:linear-gradient(180deg,#ff9aa2,#ff7a82);border-radius:5px 0 0 5px}
+.client-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.client-name{font-size:16px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:10px}
+.client-dot{width:14px;height:14px;border-radius:50%;box-shadow:0 2px 8px rgba(0,0,0,0.1);border:2px solid rgba(255,255,255,0.6);flex-shrink:0}
+.client-acts{display:flex;gap:6px}
+.c-act{width:30px;height:30px;border-radius:10px;background:rgba(255,255,255,0.4);border:1px solid rgba(255,255,255,0.5);display:flex;align-items:center;justify-content:center;color:var(--t3);font-size:13px}
+.c-act:active{background:rgba(180,140,100,0.1)}
+.client-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cs{background:rgba(255,255,255,0.35);border:1px solid rgba(255,255,255,0.4);border-radius:14px;padding:12px 6px;text-align:center}
+.cs-v{font-size:18px;font-weight:800;line-height:1}
+.cs-l{font-size:10px;color:var(--t3);margin-top:2px;font-weight:600}
+.cs.low .cs-v{color:var(--danger)}
+.client-warn{display:inline-flex;align-items:center;gap:5px;background:rgba(255,154,162,0.12);color:#c25a6f;font-size:11px;font-weight:600;padding:5px 12px;border-radius:10px;margin-top:12px;border:1px solid rgba(255,154,162,0.2)}
+
+/* 分区标签 */
+.section-label{text-align:center;font-size:11px;color:var(--t3);margin:18px 0 10px;font-weight:600;letter-spacing:1px;grid-column:span 6}
+
+/* 空状态（Bento版） */
+.c-empty{grid-column:span 6;text-align:center;padding:30px 20px;color:var(--t3);font-size:13px}
+
+/* ============================================================
+   V6 — 封面图 + 大按钮首页 + 拖拽排期日历
+   ============================================================ */
+
+/* 封面图区 */
+.cover{position:relative;height:140px;border-radius:28px;overflow:hidden;margin-bottom:14px;cursor:pointer;background:linear-gradient(135deg,#e8c4a0,#d4a373,#c48a5c);box-shadow:var(--shadow-md)}
+.cover img{width:100%;height:100%;object-fit:cover}
+.cover-overlay{position:absolute;inset:0;background:linear-gradient(180deg,rgba(0,0,0,0.1) 0%,rgba(0,0,0,0.35) 100%);display:flex;align-items:flex-end;padding:16px 18px}
+.cover-overlay .greeting-text{font-size:13px;color:rgba(255,255,255,0.85);font-weight:500}
+.cover-overlay .greeting-text b{font-size:22px;color:#fff;font-weight:800;display:block;margin-top:2px}
+.cover-hint{position:absolute;top:10px;right:12px;font-size:11px;color:rgba(255,255,255,0.7);background:rgba(0,0,0,0.2);padding:4px 10px;border-radius:10px;backdrop-filter:blur(10px)}
+
+/* 大按钮网格 */
+.btn-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px}
+.big-btn{border-radius:28px;padding:22px 18px;min-height:138px;display:flex;flex-direction:column;justify-content:space-between;position:relative;overflow:hidden;cursor:pointer;transition:transform .12s;backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid rgba(255,255,255,0.65);box-shadow:var(--shadow-md),inset 0 1px 0 rgba(255,255,255,0.9)}
+.big-btn:active{transform:scale(.96)}
+.btn-blue{background:linear-gradient(145deg,rgba(107,164,217,0.25),rgba(107,164,217,0.08));border-color:rgba(107,164,217,0.3)}
+.btn-orange{background:linear-gradient(145deg,rgba(212,145,92,0.25),rgba(212,145,92,0.08));border-color:rgba(212,145,92,0.3)}
+.btn-pink{background:linear-gradient(145deg,rgba(232,122,143,0.25),rgba(232,122,143,0.08));border-color:rgba(232,122,143,0.3)}
+.btn-purple{background:linear-gradient(145deg,rgba(155,123,212,0.25),rgba(155,123,212,0.08));border-color:rgba(155,123,212,0.3)}
+.btn-green{background:linear-gradient(145deg,rgba(127,184,142,0.25),rgba(127,184,142,0.08));border-color:rgba(127,184,142,0.3)}
+.btn-icon{width:48px;height:48px;border-radius:16px;display:flex;align-items:center;justify-content:center;font-size:24px;margin-bottom:auto}
+.btn-blue .btn-icon{background:rgba(107,164,217,0.2)}
+.btn-orange .btn-icon{background:rgba(212,145,92,0.2)}
+.btn-pink .btn-icon{background:rgba(232,122,143,0.2)}
+.btn-purple .btn-icon{background:rgba(155,123,212,0.2)}
+.btn-green .btn-icon{background:rgba(127,184,142,0.2)}
+.btn-body{margin-top:12px}
+.btn-v{font-size:32px;font-weight:800;letter-spacing:-1px;line-height:1}
+.btn-blue .btn-v{color:var(--primary)}
+.btn-orange .btn-v{color:var(--warning)}
+.btn-pink .btn-v{color:var(--danger)}
+.btn-purple .btn-v{color:var(--purple)}
+.btn-green .btn-v{color:var(--success)}
+.btn-l{font-size:13px;color:var(--text);font-weight:700;margin-top:3px}
+.btn-sub{font-size:11px;color:var(--t3);margin-top:1px;font-weight:500}
+.btn-badge{position:absolute;top:12px;right:12px;min-width:22px;height:22px;border-radius:11px;background:#ff7a82;color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 6px;box-shadow:0 3px 10px rgba(255,122,130,0.4)}
+.big-btn.wide{grid-column:span 2;min-height:auto;flex-direction:row;align-items:center;gap:14px;padding:16px 18px}
+.big-btn.wide .btn-icon{margin-bottom:0;flex-shrink:0}
+.big-btn.wide .btn-body{margin-top:0;flex:1}
+.big-btn.wide .btn-v{font-size:22px}
+
+/* 拖拽排期布局 */
+.sched-layout{display:flex;gap:12px}
+.video-sidebar{width:260px;flex-shrink:0;max-height:calc(100vh - 200px);overflow-y:auto;padding:10px;background:rgba(255,255,255,0.35);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:var(--r)}
+.sidebar-title{font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:10px;display:flex;align-items:center;justify-content:space-between;gap:6px}
+.sidebar-hint{font-size:10px;color:var(--t3);background:rgba(255,255,255,0.3);border-radius:8px;padding:6px 8px;margin-bottom:8px;line-height:1.4}
+.client-group{margin-bottom:10px}
+.client-label{font-size:11px;font-weight:700;color:var(--t2);padding:5px 8px;margin-bottom:5px;display:flex;align-items:center;gap:6px;border-radius:8px;background:rgba(255,255,255,0.3)}
+.video-chip{background:rgba(255,255,255,0.55);border:1px solid rgba(255,255,255,0.6);border-radius:12px;padding:9px 10px;margin-bottom:5px;cursor:grab;transition:all .12s;display:flex;align-items:center;gap:7px;box-shadow:0 2px 8px rgba(180,140,100,0.06)}
+.video-chip:hover{background:rgba(255,255,255,0.75);transform:translateY(-1px)}
+.video-chip.dragging{opacity:.4}
+.video-chip.ready{border-left:3px solid var(--success)}
+.video-chip.editing{border-left:3px solid var(--warning);cursor:not-allowed;opacity:.55}
+.video-chip.pending{border-left:3px solid var(--primary)}
+.chip-icon{font-size:14px;flex-shrink:0}
+.chip-info{flex:1;min-width:0}
+.chip-title{font-size:11px;font-weight:600;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.chip-meta{font-size:9px;color:var(--t3);margin-top:1px}
+.chip-status{font-size:9px;font-weight:700;padding:2px 5px;border-radius:5px;flex-shrink:0}
+
+/* 大格子日历 */
+.cal-grid-drag{flex:1;display:grid;grid-template-columns:repeat(7,1fr);gap:5px;align-content:start}
+.cgd-dow{text-align:center;font-size:11px;font-weight:700;color:var(--t3);padding:4px 0}
+.cal-cell{min-height:84px;border-radius:12px;background:rgba(255,255,255,0.3);border:1.5px solid rgba(255,255,255,0.5);padding:5px;display:flex;flex-direction:column;gap:3px;transition:all .12s}
+.cal-cell.empty{background:transparent;border:1.5px dashed rgba(180,140,100,0.08)}
+.cal-cell.today{background:rgba(107,164,217,0.08);border-color:rgba(107,164,217,0.3)}
+.cal-cell.past{opacity:.7}
+.cal-cell.drag-over{background:rgba(155,123,212,0.15);border-color:var(--purple);border-style:solid;transform:scale(1.03)}
+.cal-cell-date{font-size:11px;font-weight:700;color:var(--text)}
+.cal-cell.today .cal-cell-date{color:var(--primary)}
+.cal-cell.empty .cal-cell-date{color:rgba(154,123,94,0.4)}
+.cal-video{font-size:9px;font-weight:600;padding:3px 5px;border-radius:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;line-height:1.3}
+.cal-video .cv-client{font-size:8px;opacity:.7;display:block}
+.cal-video.published{opacity:.6}
+
+/* 未排期提醒 */
+.unsched-alert{margin-top:12px;padding:14px 16px;border-radius:var(--r);background:linear-gradient(135deg,rgba(255,154,162,0.2),rgba(255,180,170,0.12));border:1px solid rgba(255,154,162,0.25);display:none}
+.unsched-alert.show{display:block}
+.unsched-title{font-size:13px;font-weight:700;color:#c25a6f;margin-bottom:8px}
+.unsched-item{font-size:12px;color:var(--t2);padding:5px 0;border-bottom:1px solid rgba(180,140,100,0.08);display:flex;align-items:center;justify-content:space-between}
+.unsched-item:last-child{border-bottom:none}
+
+/* 自动排期弹窗 */
+.auto-modal{position:fixed;inset:0;background:rgba(90,62,43,0.3);backdrop-filter:blur(8px);display:flex;align-items:center;justify-content:center;z-index:100;opacity:0;pointer-events:none;transition:opacity .2s}
+.auto-modal.show{opacity:1;pointer-events:auto}
+.auto-box{background:rgba(255,250,243,0.95);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border-radius:24px;padding:22px;width:340px;max-width:90vw;box-shadow:0 16px 48px rgba(90,62,43,0.2);border:1px solid var(--border);max-height:80vh;overflow-y:auto}
+.auto-title{font-size:16px;font-weight:700;color:#5a3e2b;margin-bottom:14px;text-align:center}
+.auto-row{display:flex;align-items:center;justify-content:space-between;padding:9px 0;border-bottom:1px solid var(--border2);font-size:13px}
+.auto-row:last-of-type{border-bottom:none}
+.auto-row .label{color:var(--t2);font-weight:600}
+.auto-row .value{color:var(--t3)}
+.auto-preview{margin:12px 0;padding:12px;background:var(--purple-bg);border-radius:12px;font-size:12px;color:var(--purple);line-height:1.7;max-height:200px;overflow-y:auto}
+.auto-preview .unsched{color:var(--danger);font-weight:600;margin-top:6px;padding-top:6px;border-top:1px solid rgba(180,140,100,0.1)}
+.auto-actions{display:flex;gap:10px;margin-top:8px}
+
+/* 响应式 - 窄屏上下布局 */
+@media(max-width:680px){
+  .sched-layout{flex-direction:column}
+  .video-sidebar{width:100%;max-height:220px}
+  .cal-cell{min-height:62px}
+  .cal-grid-drag{gap:3px}
+}
+
+/* ========== 可视化看板 ========== */
+.dash-toolbar{display:flex;align-items:center;gap:8px;padding:6px 16px 12px}
+.dash-overview{padding:0 16px 16px}
+.dash-overview-inner{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+.dash-stat{background:rgba(255,255,255,0.55);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:18px;padding:14px 10px;text-align:center}
+.dash-stat .num{font-size:24px;font-weight:800;color:#5a3e2b;line-height:1.1}
+.dash-stat .lbl{font-size:11px;color:var(--t2);margin-top:4px}
+.dash-stat.warn .num{color:var(--danger)}
+.dash-stat.ok .num{color:var(--green)}
+.dash-clients{padding:0 16px 24px}
+.dash-client-card{background:rgba(255,255,255,0.5);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);border-radius:20px;padding:16px;margin-bottom:14px}
+.dash-client-head{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.dash-client-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.dash-client-name{font-size:16px;font-weight:700;color:#5a3e2b;flex:1}
+.dash-client-badge{font-size:11px;font-weight:700;padding:3px 10px;border-radius:20px;background:var(--purple-bg);color:var(--purple)}
+.dash-client-badge.done{background:rgba(43,182,115,0.15);color:var(--green)}
+.dash-client-badge.short{background:rgba(245,166,35,0.15);color:#e8950a}
+.dash-pbar-wrap{height:8px;background:rgba(180,140,100,0.12);border-radius:6px;overflow:hidden;margin-bottom:12px}
+.dash-pbar-fill{height:100%;border-radius:6px;transition:width .4s}
+.dash-client-stats{display:flex;gap:14px;margin-bottom:14px;flex-wrap:wrap}
+.dash-cs-item{text-align:center;min-width:54px}
+.dash-cs-num{font-size:18px;font-weight:700;color:#5a3e2b}
+.dash-cs-lbl{font-size:10px;color:var(--t2);margin-top:2px}
+.dash-channel-row{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid rgba(180,140,100,0.08);font-size:12px}
+.dash-channel-row:last-child{border-bottom:none}
+.dash-ch-name{flex:1;color:var(--t2);font-weight:600}
+.dash-ch-bar-wrap{flex:2;height:6px;background:rgba(180,140,100,0.1);border-radius:4px;overflow:hidden}
+.dash-ch-bar{height:100%;border-radius:4px}
+.dash-ch-cnt{min-width:28px;text-align:right;font-weight:700;color:#5a3e2b}
+.dash-table-h{font-size:13px;font-weight:700;color:#5a3e2b;margin:16px 0 8px;display:flex;align-items:center;gap:6px}
+.dash-table-h .cnt{font-size:11px;font-weight:600;color:var(--t2);background:rgba(180,140,100,0.1);padding:1px 8px;border-radius:10px}
+.dash-table-scroll{overflow-x:auto;-webkit-overflow-scrolling:touch;border-radius:8px}
+.dash-table{width:100%;border-collapse:collapse;font-size:11px;min-width:320px}
+.dash-table th{background:rgba(180,140,100,0.08);color:var(--t2);font-weight:700;padding:7px 6px;text-align:left;white-space:nowrap}
+.dash-table td{padding:7px 6px;border-bottom:1px solid rgba(180,140,100,0.06);color:var(--t3);vertical-align:middle}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table .col-date{white-space:nowrap;color:#5a3e2b;font-weight:600}
+.dash-table .col-title{max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dash-table .col-channels{font-size:10px;line-height:1.5;white-space:nowrap}
+.dash-table .col-status{font-size:10px;text-align:center}
+.dash-chip{display:inline-block;padding:1px 6px;border-radius:8px;font-size:10px;margin:1px;font-weight:600}
+.dash-chip.pub{background:rgba(43,182,115,0.15);color:var(--green)}
+.dash-chip.pend{background:rgba(245,166,35,0.15);color:#e8950a}
+.dash-chip.no{background:rgba(180,140,100,0.1);color:var(--t2)}
+.dash-empty{text-align:center;padding:30px 20px;color:var(--t2);font-size:13px}
+.dash-month-note{text-align:center;font-size:11px;color:var(--t2);margin-top:4px}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <div class="back-header">
+      <button class="back-btn" id="backBtn" style="display:none" onclick="goBack()">‹</button>
+      <div>
+        <div class="header-title" id="pageTitle">运营工作台</div>
+        <div class="header-sub" id="headerSub"></div>
+      </div>
+    </div>
+    <button class="icon-btn" onclick="openSettings()">⚙</button>
+  </div>
+
+  <div class="content" id="content">
+    <!-- 首页 -->
+    <div class="page active" id="page-home">
+      <!-- 问候栏 -->
+      <div class="greeting">
+        <div class="greeting-text" id="greetingText">你好<b>运营工作台</b></div>
+        <button class="greet-btn" onclick="changeBackground()">🖼️</button>
+        <button class="greet-btn" id="syncBtn" onclick="cloudPullNow()" style="font-size:14px">☁️</button>
+      </div>
+
+      <!-- 安装提示 -->
+      <div id="installHint"></div>
+
+      <!-- 大按钮网格 -->
+      <div class="btn-grid" id="btnGrid">
+        <div id="statsGrid" style="display:contents"></div>
+        <div id="alertContainer" style="display:contents"></div>
+        <div id="progressCard" style="display:contents"></div>
+      </div>
+    </div>
+
+    <!-- 客户详情 -->
+    <div class="page" id="page-client">
+      <div class="section">
+        <div class="section-h">
+          <div class="section-t">视频</div>
+          <div style="display:flex;gap:4px">
+            <button class="section-a" onclick="openChannelManager()">渠道</button>
+            <button class="section-a" onclick="openVideoModal()">+ 视频</button>
+          </div>
+        </div>
+        <div id="videoList"></div>
+      </div>
+    </div>
+
+    <!-- 日历（拖拽排期） -->
+    <div class="page" id="page-calendar">
+      <div class="cal-nav">
+        <button class="cal-arrow" onclick="changeMonth(-1)">‹</button>
+        <div class="cal-month" id="calMonth"></div>
+        <button class="cal-arrow" onclick="changeMonth(1)">›</button>
+        <button class="section-a" onclick="goToToday()">今天</button>
+        <button class="section-a" onclick="openAutoSchedule()">⚡ 自动排期</button>
+      </div>
+      <div class="sched-layout">
+        <div class="video-sidebar" id="videoSidebar"></div>
+        <div class="cal-grid-drag" id="calGrid"></div>
+      </div>
+      <div class="unsched-alert" id="unscheduledAlert"></div>
+    </div>
+
+    <!-- 客户列表 -->
+    <div class="page" id="page-clients">
+      <div class="section">
+        <div class="section-h">
+          <div class="section-t">客户 <span class="cnt" id="clientCount">0</span></div>
+          <button class="section-a" onclick="openClientModal()">+ 新增</button>
+        </div>
+        <div id="clientList"></div>
+      </div>
+    </div>
+
+    <!-- 可视化看板 -->
+    <div class="page" id="page-dashboard">
+      <div class="dash-toolbar">
+        <button class="cal-arrow" onclick="dashChangeMonth(-1)">‹</button>
+        <div class="cal-month" id="dashMonth"></div>
+        <button class="cal-arrow" onclick="dashChangeMonth(1)">›</button>
+        <button class="section-a" onclick="dashGoThisMonth()">本月</button>
+      </div>
+      <div id="dashOverview" class="dash-overview"></div>
+      <div id="dashClients" class="dash-clients"></div>
+    </div>
+  </div>
+
+  <!-- 自动排期弹窗 -->
+  <div class="auto-modal" id="autoModal" onclick="onAutoOverlay(event)">
+    <div class="auto-box" id="autoBox">
+      <div class="auto-title" id="autoTitle">⚡ 自动排期</div>
+      <div id="autoBody"></div>
+    </div>
+  </div>
+
+  <button class="fab" id="fab" onclick="onFabClick()">+</button>
+
+  <div class="nav">
+    <button class="nav-item active" data-page="home" onclick="switchPage('home')"><span class="nav-icon">🏠</span>首页</button>
+    <button class="nav-item" data-page="clients" onclick="switchPage('clients')"><span class="nav-icon">👥</span>客户</button>
+    <button class="nav-item" data-page="calendar" onclick="switchPage('calendar')"><span class="nav-icon">📅</span>日历</button>
+    <button class="nav-item" data-page="dashboard" onclick="switchPage('dashboard')"><span class="nav-icon">📊</span>看板</button>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" onclick="onOverlayClick(event)">
+  <div class="modal" id="modal">
+    <div class="handle"></div>
+    <div class="modal-title" id="modalTitle">新增</div>
+    <div id="modalBody"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================================
+// 数据层
+// ============================================================
+const SK = "video_ops_v3";
+const DEFAULT_CHANNELS = [
+  {id:"wx", name:"视频号"},
+  {id:"dy", name:"抖音"},
+  {id:"xhs", name:"小红书"},
+  {id:"bili", name:"B站"}
+];
+const CLIENT_COLORS = ["#4f7cff","#7b5cff","#2bb673","#f5a623","#ff6b6b","#00b8d4","#ff8a3d","#e84aa1"];
+
+let state = {
+  clients: [],
+  videos: [],
+  settings: {
+    publishInterval: 2,
+    remindThreshold: 2,
+    monthlyTarget: 15,
+    apiKey: "",  // 旧字段保留兼容
+    aiPlatform: "zhipu",
+    zhipuKey: "",   // 智谱密钥
+    deepseekKey: "", // DeepSeek密钥
+    aicmKey: "",     // AICodeMirror密钥
+    // 云端同步配置
+    supabaseUrl: "https://ycehddktfdybwraweteu.supabase.co",
+    supabaseKey: "sb_publishable_go9QTtxqiBYFmvs1Vglk9g_52Io8kGM",
+    cloudSync: true,   // 是否开启云端同步
+    lastSyncAt: 0      // 上次同步时间戳
+  }
+};
+let currentClientId = null;
+let calMonthOffset = 0;
+let dashMonthOffset = 0;
+let currentPage = "home";
+let pageHistory = ["home"];
+
+function load(){
+  try{
+    const s = localStorage.getItem(SK);
+    if(s){
+      const p = JSON.parse(s);
+      state = {...state, ...p, settings:{...state.settings, ...(p.settings||{})}};
+      // 兼容旧数据：给没有 channels 的 client 补默认渠道
+      state.clients.forEach(c=>{
+        if(!c.channels || c.channels.length===0){
+          c.channels = DEFAULT_CHANNELS.map(ch=>({id:uid(), name:ch.name, url:""}));
+        }
+        // 给旧渠道补 url 字段
+        c.channels.forEach(ch=>{ if(!ch.url) ch.url = ""; });
+      });
+      // 兼容旧 video：把 platforms 转成 channelStates
+      state.videos.forEach(v=>{
+        if(!v.channelStates){
+          v.channelStates = {};
+          // 旧数据迁移：尝试映射
+          const client = state.clients.find(c=>c.id===v.clientId);
+          if(client){
+            client.channels.forEach((ch,i)=>{
+              const oldKeys = ["wx","dy","xhs","bili"];
+              const oldKey = oldKeys[i];
+              v.channelStates[ch.id] = {
+                selected: v.platforms && v.platforms[oldKey] || false,
+                published: v.platforms && v.platforms[oldKey] || false,
+                publishDate: (v.publishDates && v.publishDates[oldKey]) || ""
+              };
+            });
+          }
+          delete v.platforms;
+          delete v.publishDates;
+        }
+      });
+    } else {
+      seedDemo();
+    }
+  }catch(e){console.error(e); seedDemo()}
+  save();
+  // 加载本地数据后，检查云端是否有更新
+  const cfg = getSupabaseConfig();
+  if(cfg.enabled && cfg.url && cfg.key){
+    cloudPull(function(ok){
+      if(!ok){
+        // 云端没数据，把本地数据上传
+        cloudFirstUpload();
+      }
+    });
+  }
+}
+function save(){
+  try{localStorage.setItem(SK, JSON.stringify(state))}catch(e){console.error(e)}
+  cloudPushDebounced();
+}
+
+// ============================================================
+// 云端同步（Supabase）
+// ============================================================
+let cloudSyncing = false; // 防止重复同步
+
+function getSupabaseConfig(){
+  const s = state.settings;
+  return { url: s.supabaseUrl, key: s.supabaseKey, enabled: s.cloudSync };
+}
+
+// 推送数据到云端
+function cloudPush(silent){
+  const cfg = getSupabaseConfig();
+  if(!cfg.enabled || !cfg.url || !cfg.key) return;
+  if(cloudSyncing) return;
+  cloudSyncing = true;
+  const payload = {
+    id: "main",
+    data: JSON.stringify(state),
+    updated_at: new Date().toISOString()
+  };
+  fetch(`${cfg.url}/rest/v1/workbench_data?id=eq.main`, {
+    method: "PATCH",
+    headers: {
+      "apikey": cfg.key,
+      "Authorization": `Bearer ${cfg.key}`,
+      "Content-Type": "application/json",
+      "Prefer": "return=minimal"
+    },
+    body: JSON.stringify(payload)
+  }).then(r => {
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    state.settings.lastSyncAt = Date.now();
+    localStorage.setItem(SK, JSON.stringify(state));
+    if(!silent) showToast("已同步到云端 ✓");
+  }).catch(e => {
+    console.error("cloudPush error:", e);
+    if(!silent) showToast("同步失败，稍后重试");
+  }).finally(() => { cloudSyncing = false; });
+}
+
+// 从云端拉取数据
+function cloudPull(callback){
+  const cfg = getSupabaseConfig();
+  if(!cfg.enabled || !cfg.url || !cfg.key){ callback && callback(false); return; }
+  if(cloudSyncing){ callback && callback(false); return; }
+  cloudSyncing = true;
+  fetch(`${cfg.url}/rest/v1/workbench_data?id=eq.main&select=data,updated_at`, {
+    method: "GET",
+    headers: {
+      "apikey": cfg.key,
+      "Authorization": `Bearer ${cfg.key}`
+    }
+  }).then(r => {
+    if(!r.ok) throw new Error("HTTP "+r.status);
+    return r.json();
+  }).then(arr => {
+    if(arr && arr.length > 0 && arr[0].data){
+      const cloudData = JSON.parse(arr[0].data);
+      const cloudUpdated = new Date(arr[0].updated_at).getTime();
+      const localUpdated = state.settings.lastSyncAt || 0;
+      // 云端数据更新，拉取覆盖本地
+      if(cloudUpdated > localUpdated){
+        state = {...state, ...cloudData, settings:{...state.settings, ...(cloudData.settings||{}), lastSyncAt: cloudUpdated}};
+        // 兼容迁移
+        state.clients.forEach(c=>{
+          if(!c.channels || c.channels.length===0){
+            c.channels = DEFAULT_CHANNELS.map(ch=>({id:uid(), name:ch.name, url:""}));
+          }
+          c.channels.forEach(ch=>{ if(!ch.url) ch.url = ""; });
+        });
+        state.videos.forEach(v=>{
+          if(!v.channelStates){
+            v.channelStates = {};
+            const client = state.clients.find(c=>c.id===v.clientId);
+            if(client){
+              client.channels.forEach((ch,i)=>{
+                const oldKeys = ["wx","dy","xhs","bili"];
+                v.channelStates[ch.id] = { selected:false, published:false, publishDate:"" };
+              });
+            }
+          }
+        });
+        localStorage.setItem(SK, JSON.stringify(state));
+        render();
+        showToast("已从云端同步最新数据 ✓");
+      }
+      callback && callback(true);
+    } else {
+      callback && callback(false);
+    }
+  }).catch(e => {
+    console.error("cloudPull error:", e);
+    callback && callback(false);
+  }).finally(() => { cloudSyncing = false; });
+}
+
+// 首次上传（如果云端没有数据）
+function cloudFirstUpload(callback){
+  const cfg = getSupabaseConfig();
+  if(!cfg.enabled || !cfg.url || !cfg.key){ callback && callback(false); return; }
+  fetch(`${cfg.url}/rest/v1/workbench_data?id=eq.main&select=id`, {
+    method: "GET",
+    headers: { "apikey": cfg.key, "Authorization": `Bearer ${cfg.key}` }
+  }).then(r => r.json()).then(arr => {
+    if(!arr || arr.length === 0){
+      // 云端没数据，上传本地
+      const payload = { id:"main", data: JSON.stringify(state), updated_at: new Date().toISOString() };
+      return fetch(`${cfg.url}/rest/v1/workbench_data`, {
+        method: "POST",
+        headers: {
+          "apikey": cfg.key,
+          "Authorization": `Bearer ${cfg.key}`,
+          "Content-Type": "application/json",
+          "Prefer": "return=minimal"
+        },
+        body: JSON.stringify(payload)
+      });
+    }
+  }).then(() => {
+    state.settings.lastSyncAt = Date.now();
+    localStorage.setItem(SK, JSON.stringify(state));
+    callback && callback(true);
+  }).catch(e => {
+    console.error("cloudFirstUpload error:", e);
+    callback && callback(false);
+  });
+}
+
+// 带防抖的自动推送（每次 save 后延迟 2 秒再推，避免频繁请求）
+let cloudPushTimer = null;
+function cloudPushDebounced(){
+  const cfg = getSupabaseConfig();
+  if(!cfg.enabled) return;
+  if(cloudPushTimer) clearTimeout(cloudPushTimer);
+  cloudPushTimer = setTimeout(() => { cloudPush(true); }, 2000);
+}
+
+function seedDemo(){
+  const c1 = uid(), c2 = uid(), c3 = uid();
+  state.clients = [
+    {id:c1, name:"美妆品牌A", color:CLIENT_COLORS[0], channels:DEFAULT_CHANNELS.map(ch=>({id:uid(),name:ch.name})), createdAt:Date.now()},
+    {id:c2, name:"餐饮店B", color:CLIENT_COLORS[1], channels:DEFAULT_CHANNELS.map(ch=>({id:uid(),name:ch.name})), createdAt:Date.now()},
+    {id:c3, name:"健身房C", color:CLIENT_COLORS[2], channels:[
+      {id:uid(), name:"工作视频号"},
+      {id:uid(), name:"生活视频号"},
+      {id:uid(), name:"工作抖音"},
+      {id:uid(), name:"小红书"},
+    ], createdAt:Date.now()},
+  ];
+  const t = new Date();
+  const addDays = n => { const d=new Date(t); d.setDate(d.getDate()+n); return dayStr(d); };
+  const today = todayStr();
+
+  // 辅助：生成 channelStates
+  function cs(clientId, selectedMap){
+    const client = state.clients.find(c=>c.id===clientId);
+    const result = {};
+    client.channels.forEach(ch=>{
+      const s = selectedMap[ch.name] || selectedMap[ch.id];
+      // 默认全选；只有显式 false 才不选
+      const selected = s === false ? false : true;
+      result[ch.id] = {
+        selected: selected,
+        published: s === "done" || s === "pending",
+        publishDate: s === "done" || s === "pending" ? today : ""
+      };
+    });
+    return result;
+  }
+
+  state.videos = [
+    {id:uid(), clientId:c1, title:"夏季新品口红试色", status:"editing", scheduledDate:"", channelStates:cs(c1,{}), note:"客户要求加产品特写", createdAt:Date.now()},
+    {id:uid(), clientId:c1, title:"618促销预告", status:"final", scheduledDate:"", channelStates:cs(c1,{}), note:"", createdAt:Date.now()},
+    {id:uid(), clientId:c1, title:"品牌故事长视频", status:"pending", scheduledDate:addDays(1), channelStates:cs(c1,{"视频号":"done","抖音":"done","小红书":"done","B站":"pending"}), note:"", createdAt:Date.now()},
+    {id:uid(), clientId:c1, title:"618大促战报", status:"published", scheduledDate:addDays(-2), channelStates:cs(c1,{"视频号":"done","抖音":"done","小红书":"done","B站":"done"}), note:"", createdAt:Date.now()},
+    
+    {id:uid(), clientId:c2, title:"新品菜单试吃", status:"final", scheduledDate:"", channelStates:cs(c2,{}), note:"", createdAt:Date.now()},
+    {id:uid(), clientId:c2, title:"周末探店vlog", status:"pending", scheduledDate:addDays(3), channelStates:cs(c2,{"视频号":"pending","抖音":"pending","小红书":"pending","B站":"pending"}), note:"", createdAt:Date.now()},
+    
+    {id:uid(), clientId:c3, title:"健身教程-核心训练", status:"editing", scheduledDate:"", channelStates:cs(c3,{}), note:"等剪辑加字幕", createdAt:Date.now()},
+    {id:uid(), clientId:c3, title:"私教课推广", status:"final", scheduledDate:"", channelStates:cs(c3,{"工作视频号":"pending","工作抖音":"pending","小红书":"pending"}), note:"只发工作号，不发生活号", createdAt:Date.now()},
+  ];
+  save();
+}
+
+function uid(){return Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+
+// ============================================================
+// 日期工具
+// ============================================================
+function dayStr(d){const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,"0"),day=String(d.getDate()).padStart(2,"0");return `${y}-${m}-${day}`}
+function todayStr(){return dayStr(new Date())}
+function dayNum(s){const[y,m,d]=s.split('-').map(Number);return Math.floor(Date.UTC(y,m-1,d)/86400000)}
+function todayNum(){const d=new Date();return Math.floor(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate())/86400000)}
+function formatDate(s){
+  if(!s) return "未排期";
+  const diff = dayNum(s) - todayNum();
+  if(diff===0) return "今天";
+  if(diff===1) return "明天";
+  if(diff===-1) return "昨天";
+  if(diff>0 && diff<=7) return `${diff}天后`;
+  if(diff<0) return `逾期${-diff}天`;
+  const[y,m,d]=s.split('-').map(Number);
+  return `${m}月${d}日`;
+}
+function getDow(s){const[y,m,d]=s.split('-').map(Number);return["周日","周一","周二","周三","周四","周五","周六"][new Date(y,m-1,d).getDay()]}
+function isToday(s){return s===todayStr()}
+function isOverdue(s){return s && s<todayStr()}
+function isThisMonth(s){if(!s)return false;const d=new Date(s+"T00:00:00");const n=new Date();return d.getFullYear()===n.getFullYear() && d.getMonth()===n.getMonth()}
+
+// ============================================================
+// 业务计算
+// ============================================================
+function clientVideos(cid){return state.videos.filter(v=>v.clientId===cid)}
+function clientStock(cid){return clientVideos(cid).filter(v=>v.status!=="published").length}
+function clientPublishedThisMonth(cid){
+  return clientVideos(cid).filter(v=>v.status==="published" && v.scheduledDate && isThisMonth(v.scheduledDate)).length;
+}
+function clientAlertClients(){return state.clients.filter(c=>clientStock(c.id) <= state.settings.remindThreshold)}
+
+// 渠道相关
+function getChannelName(clientId, channelId){
+  const c = state.clients.find(x=>x.id===clientId);
+  if(!c) return "未知渠道";
+  const ch = c.channels.find(x=>x.id===channelId);
+  return ch ? ch.name : "已删除渠道";
+}
+function videoSelectedChannels(v){
+  // 返回该视频选中的渠道
+  return Object.entries(v.channelStates || {})
+    .filter(([id,s])=>s.selected)
+    .map(([id,s])=>({id, ...s, name:getChannelName(v.clientId, id)}));
+}
+function videoPublishedCount(v){
+  return Object.values(v.channelStates || {}).filter(s=>s.selected && s.published).length;
+}
+function videoSelectedCount(v){
+  return Object.values(v.channelStates || {}).filter(s=>s.selected).length;
+}
+function isVideoFullyPublished(v){
+  const sel = videoSelectedChannels(v);
+  return sel.length > 0 && sel.every(s=>s.published);
+}
+
+// ============================================================
+// 页面导航
+// ============================================================
+function switchPage(page, pushHistory=true){
+  if(pushHistory && currentPage!==page) pageHistory.push(page);
+  currentPage = page;
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("page-"+page).classList.add("active");
+  document.querySelectorAll(".nav-item").forEach(n=>n.classList.remove("active"));
+  document.querySelector(`.nav-item[data-page="${page}"]`)?.classList.add("active");
+  
+  const titles = {home:"运营工作台", client:"", calendar:"发布日历", clients:"客户管理", dashboard:"数据看板"};
+  document.getElementById("pageTitle").textContent = titles[page] || "运营工作台";
+  
+  const showBack = page !== "home" && page !== "calendar" && page !== "clients" && page !== "dashboard";
+  document.getElementById("backBtn").style.display = showBack ? "flex" : "none";
+  
+  if(page === "home"){
+    const n = new Date();
+    const dows = ["周日","周一","周二","周三","周四","周五","周六"];
+    document.getElementById("headerSub").textContent = `${n.getFullYear()}/${n.getMonth()+1}/${n.getDate()} ${dows[n.getDay()]}`;
+  } else if(page === "clients"){
+    document.getElementById("headerSub").textContent = `${state.clients.length} 个客户`;
+  } else {
+    document.getElementById("headerSub").textContent = "";
+  }
+  document.getElementById("content").scrollTop = 0;
+  render();
+}
+
+function openClient(cid){
+  currentClientId = cid;
+  pageHistory.push("client");
+  currentPage = "client";
+  document.querySelectorAll(".page").forEach(p=>p.classList.remove("active"));
+  document.getElementById("page-client").classList.add("active");
+  document.getElementById("backBtn").style.display = "flex";
+  const c = state.clients.find(x=>x.id===cid);
+  document.getElementById("pageTitle").textContent = c ? c.name : "";
+  document.getElementById("headerSub").textContent = c ? `存货 ${clientStock(cid)} 条 · 本月已发 ${clientPublishedThisMonth(cid)} 条 · ${c.channels.length} 个渠道` : "";
+  document.getElementById("content").scrollTop = 0;
+  render();
+}
+
+function goBack(){
+  pageHistory.pop();
+  const prev = pageHistory[pageHistory.length-1] || "home";
+  if(prev === "client" && currentClientId){
+    pageHistory.pop();
+    openClient(currentClientId);
+  } else {
+    switchPage(prev, false);
+  }
+}
+
+function onFabClick(){
+  if(currentPage === "client" && currentClientId){
+    openVideoModal();
+  } else if(currentPage === "home" || currentPage === "clients"){
+    openClientModal();
+  } else {
+    showToast("在此页面暂无新增");
+  }
+}
+
+// ============================================================
+// 渲染 - 首页
+// ============================================================
+function renderHome(){
+  renderGreeting();
+  renderBackground();
+  renderInstallHint();
+  renderStats();
+  renderAlerts();
+  renderProgress();
+}
+
+function renderGreeting(){
+  const h = new Date().getHours();
+  let g = "你好";
+  if(h < 6) g = "夜深了";
+  else if(h < 11) g = "早上好";
+  else if(h < 14) g = "中午好";
+  else if(h < 18) g = "下午好";
+  else g = "晚上好";
+  document.getElementById("greetingText").innerHTML = `${g}<b>运营工作台</b>`;
+}
+
+// 背景图
+function renderBackground(){
+  const img = localStorage.getItem("bg_image");
+  if(img){
+    document.body.classList.add("has-bg");
+    document.body.style.setProperty("--bg-image", `url(${img})`);
+    document.body.querySelector("::before");
+    // 直接设置 ::before 的背景
+    const style = document.getElementById("bgStyle") || (()=>{
+      const s = document.createElement("style");
+      s.id = "bgStyle";
+      document.head.appendChild(s);
+      return s;
+    })();
+    style.textContent = `body.has-bg::before{background-image:url(${img})}`;
+  } else {
+    document.body.classList.remove("has-bg");
+    const s = document.getElementById("bgStyle");
+    if(s) s.textContent = "";
+  }
+}
+
+function changeBackground(){
+  const choice = confirm("设置背景图：\n\n「确定」= 从相册选图\n「取消」= 清除背景图");
+  if(choice){
+    const input = document.createElement("input");
+    input.type = "file";
+    input.accept = "image/*";
+    input.onchange = e=>{
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = ev=>{
+        const img = new Image();
+        img.onload = ()=>{
+          const canvas = document.createElement("canvas");
+          const maxW = 800;
+          let w = img.width, h = img.height;
+          if(w > maxW){ h = h * maxW / w; w = maxW; }
+          canvas.width = w; canvas.height = h;
+          canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+          const compressed = canvas.toDataURL("image/jpeg", 0.8);
+          localStorage.setItem("bg_image", compressed);
+          renderBackground();
+          showToast("背景图已设置 ✓");
+        };
+        img.src = ev.target.result;
+      };
+      reader.readAsDataURL(file);
+    };
+    input.click();
+  } else {
+    localStorage.removeItem("bg_image");
+    renderBackground();
+    showToast("已清除背景图");
+  }
+}
+
+function renderAlerts(){
+  const c = document.getElementById("alertContainer");
+  const alertClients = clientAlertClients();
+  if(alertClients.length === 0){c.innerHTML="";return}
+  const names = alertClients.map(c=>c.name).join("、");
+  c.innerHTML = `<div class="big-btn btn-pink wide" onclick="switchPage('calendar')">
+    <div class="btn-icon">📷</div>
+    ${alertClients.length>0?'<div class="btn-badge">'+alertClients.length+'</div>':""}
+    <div class="btn-body">
+      <div class="btn-v" style="font-size:18px">${alertClients.length} 个客户存货告急</div>
+      <div class="btn-l" style="margin-top:4px">${names} 仅剩 ≤${state.settings.remindThreshold} 条</div>
+      <div class="btn-sub" style="margin-top:2px">建议尽快联系安排下次拍摄 ›</div>
+    </div>
+  </div>`;
+}
+
+function renderInstallHint(){
+  const c = document.getElementById("installHint");
+  const dismissed = localStorage.getItem("install_hint_dismissed");
+  const isStandalone = window.matchMedia("(display-mode: standalone)").matches || window.navigator.standalone === true;
+  if(!dismissed && !isStandalone){
+    c.innerHTML = `<div class="install-hint"><span class="close" onclick="dismissInstallHint()">×</span><b>📲 安装到手机桌面</b>用 Safari 打开，点底部分享 →「添加到主屏幕」，即可像 App 一样使用。</div>`;
+  } else {c.innerHTML=""}
+}
+function dismissInstallHint(){localStorage.setItem("install_hint_dismissed","1");renderInstallHint()}
+
+function renderStats(){
+  const todayPub = state.videos.filter(v=>v.status==="pending" && isToday(v.scheduledDate)).length;
+  const editing = state.videos.filter(v=>v.status==="editing").length;
+  const totalStock = state.videos.filter(v=>v.status!=="published").length;
+  const clientCnt = state.clients.length;
+  document.getElementById("statsGrid").innerHTML = `
+    <div class="big-btn btn-blue" onclick="switchPage('calendar')">
+      <div class="btn-icon">📦</div>
+      ${todayPub>0?'<div class="btn-badge">'+todayPub+'</div>':""}
+      <div class="btn-body">
+        <div class="btn-v">${todayPub}</div>
+        <div class="btn-l">今日待发</div>
+        <div class="btn-sub">点击查看日历</div>
+      </div>
+    </div>
+    <div class="big-btn btn-orange" onclick="goToClientList()">
+      <div class="btn-icon">✏️</div>
+      ${editing>0?'<div class="btn-badge">'+editing+'</div>':""}
+      <div class="btn-body">
+        <div class="btn-v">${editing}</div>
+        <div class="btn-l">修改中</div>
+        <div class="btn-sub">等待客户反馈</div>
+      </div>
+    </div>
+    <div class="big-btn btn-purple" onclick="goToClientList()">
+      <div class="btn-icon">👥</div>
+      <div class="btn-body">
+        <div class="btn-v">${clientCnt}</div>
+        <div class="btn-l">客户管理</div>
+        <div class="btn-sub">${clientCnt} 个客户</div>
+      </div>
+    </div>
+    <div class="big-btn btn-green" onclick="switchPage('calendar')">
+      <div class="btn-icon">🎞️</div>
+      <div class="btn-body">
+        <div class="btn-v">${totalStock}</div>
+        <div class="btn-l">总存货</div>
+        <div class="btn-sub">未发布视频</div>
+      </div>
+    </div>`;
+}
+
+function goToClientList(){
+  switchPage('clients');
+}
+
+function renderProgress(){
+  const card = document.getElementById("progressCard");
+  if(state.clients.length === 0){card.innerHTML="";return}
+  const target = state.settings.monthlyTarget;
+  const colors = ["#6ba4d9","#d4a373","#e87a8f","#9b7bd4","#7fb88e","#d4a373"];
+  const rows = state.clients.map((c,i)=>{
+    const pub = clientPublishedThisMonth(c.id);
+    const pct = target>0 ? Math.round(pub/target*100) : 0;
+    const col = c.color || colors[i%colors.length];
+    return `<div style="margin-bottom:10px">
+      <div style="display:flex;justify-content:space-between;font-size:11px;margin-bottom:4px">
+        <span style="font-weight:600;color:var(--text)">${esc(c.name)}</span>
+        <span style="color:var(--t3);font-weight:600">${pub}/${target}</span>
+      </div>
+      <div style="height:6px;background:rgba(255,255,255,0.4);border-radius:3px;overflow:hidden">
+        <div style="height:100%;width:${Math.min(pct,100)}%;background:${col};border-radius:3px;transition:width .3s"></div>
+      </div>
+    </div>`;
+  }).join("");
+  card.innerHTML = `<div class="big-btn wide" style="background:rgba(255,255,255,0.42);backdrop-filter:var(--glass);-webkit-backdrop-filter:var(--glass);border:1px solid var(--border);min-height:auto;padding:16px 18px">
+    <div style="flex:1">
+      <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:10px">📊 本月发布进度</div>
+      ${rows}
+    </div>
+  </div>`;
+}
+
+function renderClients(){
+  const list = document.getElementById("clientList");
+  const cntEl = document.getElementById("clientCount");
+  if(cntEl) cntEl.textContent = state.clients.length;
+  
+  if(state.clients.length === 0){
+    list.innerHTML = `<div class="empty"><div class="empty-icon">👥</div><div class="empty-text">还没有客户，点击右下角 + 添加</div></div>`;
+    return;
+  }
+  
+  list.innerHTML = state.clients.map(c=>{
+    const stock = clientStock(c.id);
+    const published = clientPublishedThisMonth(c.id);
+    const isAlert = stock <= state.settings.remindThreshold;
+    const target = state.settings.monthlyTarget;
+    const lowCls = stock <= state.settings.remindThreshold ? "low" : "";
+    
+    return `<div class="card c-client ${isAlert?"alert":""}" onclick="openClient('${c.id}')">
+      <div class="client-top">
+        <div class="client-name"><span class="client-dot" style="background:${c.color}"></span>${esc(c.name)}</div>
+        <div class="client-acts">
+          <button class="c-act" onclick="event.stopPropagation();openClientModal('${c.id}')">✏</button>
+          <button class="c-act" onclick="event.stopPropagation();deleteClient('${c.id}')">🗑</button>
+        </div>
+      </div>
+      <div class="client-stats">
+        <div class="cs ${lowCls}"><div class="cs-v">${stock}</div><div class="cs-l">存货</div></div>
+        <div class="cs"><div class="cs-v">${published}</div><div class="cs-l">本月已发</div></div>
+        <div class="cs"><div class="cs-v">${target-published>0?target-published:0}</div><div class="cs-l">距目标</div></div>
+      </div>
+      ${isAlert?`<div class="client-warn">📷 存货仅剩 ${stock} 条，联系下次拍摄</div>`:""}
+    </div>`;
+  }).join("");
+}
+
+// ============================================================
+// 渲染 - 客户详情
+// ============================================================
+function renderClientDetail(){
+  if(!currentClientId) return;
+  const c = state.clients.find(x=>x.id===currentClientId);
+  if(!c) return;
+  
+  document.getElementById("pageTitle").textContent = c.name;
+  document.getElementById("headerSub").textContent = `存货 ${clientStock(c.id)} 条 · 本月已发 ${clientPublishedThisMonth(c.id)} 条 · ${c.channels.length} 个渠道`;
+  
+  const list = document.getElementById("videoList");
+  const vids = clientVideos(c.id);
+  const order = {editing:0, final:1, pending:2, published:3};
+  vids.sort((a,b)=>(order[a.status]??9)-(order[b.status]??9));
+  
+  if(vids.length === 0){
+    list.innerHTML = `<div class="empty"><div class="empty-icon">🎬</div><div class="empty-text">还没有视频，点击 + 添加</div></div>`;
+    return;
+  }
+  
+  list.innerHTML = vids.map(v=>videoCardHTML(v)).join("");
+}
+
+function videoCardHTML(v){
+  const statusMap = {
+    editing:["s-editing","修改中","✏"],
+    final:["s-final","已定稿","✓"],
+    pending:["s-pending","待发布","▶"],
+    published:["s-published","已发完","✓"]
+  };
+  const[stCls,stTxt,thumbIcon] = statusMap[v.status] || statusMap.editing;
+  const thumbCls = v.status;
+  
+  // 渠道进度
+  const selChannels = videoSelectedChannels(v);
+  const pubCount = videoPublishedCount(v);
+  const selCount = selChannels.length;
+  
+  let channelsHTML = "";
+  if(selCount > 0){
+    channelsHTML = selChannels.map(s=>{
+      return `<span class="ch ${s.published?"done":"todo"}">${s.published?"✓":"○"} ${esc(s.name)}</span>`;
+    }).join("");
+  }
+  
+  const dateText = v.scheduledDate ? formatDate(v.scheduledDate) : "";
+  const progText = selCount > 0 ? `${pubCount}/${selCount} 渠道已发` : "未选渠道";
+  const progPct = selCount > 0 ? (pubCount/selCount*100) : 0;
+  
+  return `<div class="video-card ${v.status==="published"?"done":""}" onclick="openVideoModal('${v.id}')">
+    <div class="vc-top">
+      <div class="vc-thumb ${thumbCls}">${thumbIcon}</div>
+      <div class="vc-info">
+        <div class="vc-title">${esc(v.title)}</div>
+        <div class="vc-meta">
+          <span class="status ${stCls}">${stTxt}</span>
+          ${dateText?`<span>📅 ${dateText}</span>`:""}
+          ${v.note?`<span>💬 ${esc(v.note)}</span>`:""}
+        </div>
+        <div class="vc-prog-text">${progText}</div>
+        ${selCount>0?`<div class="prog"><div class="prog-fill" style="width:${progPct}%"></div></div>`:""}
+        ${channelsHTML?`<div class="channels">${channelsHTML}</div>`:""}
+      </div>
+      <div class="vc-actions">
+        ${v.status!=="published"?`<button class="vc-act" onclick="event.stopPropagation();quickPublish('${v.id}')" title="标记全部已发">✓</button>`:""}
+        <button class="vc-act" onclick="event.stopPropagation();openVideoModal('${v.id}')">✏</button>
+        <button class="vc-act" onclick="event.stopPropagation();deleteVideo('${v.id}')">🗑</button>
+      </div>
+    </div>
+  </div>`;
+}
+
+function quickPublish(id){
+  const v = state.videos.find(x=>x.id===id);
+  if(!v) return;
+  // 把所有选中渠道标记为已发
+  Object.values(v.channelStates || {}).forEach(s=>{
+    if(s.selected){
+      s.published = true;
+      if(!s.publishDate) s.publishDate = todayStr();
+    }
+  });
+  v.status = "published";
+  if(!v.scheduledDate) v.scheduledDate = todayStr();
+  save();
+  render();
+  showToast("已标记为全部发布 🎉");
+}
+
+// ============================================================
+// 渲染 - 日历
+// ============================================================
+function renderCalendar(){
+  const now = new Date();
+  const viewDate = new Date(now.getFullYear(), now.getMonth()+calMonthOffset, 1);
+  const y = viewDate.getFullYear(), m = viewDate.getMonth();
+  document.getElementById("calMonth").textContent = `${y}年${m+1}月`;
+  
+  const firstDow = (new Date(y, m, 1).getDay() + 6) % 7; // 周一为首
+  const daysInMonth = new Date(y, m+1, 0).getDate();
+  const today = todayStr();
+  
+  // 按日期聚合所有有排期的视频（包括渠道级排期）
+  const tasksByDate = {};
+  state.videos.forEach(v=>{
+    // 视频整体排期
+    if(v.scheduledDate && v.scheduledDate.startsWith(`${y}-${String(m+1).padStart(2,"0")}`)){
+      if(!tasksByDate[v.scheduledDate]) tasksByDate[v.scheduledDate] = [];
+      tasksByDate[v.scheduledDate].push({video:v, channel:null});
+    }
+    // 渠道级排期
+    const selChs = videoSelectedChannels(v);
+    selChs.forEach(s=>{
+      if(s.publishDate && s.publishDate.startsWith(`${y}-${String(m+1).padStart(2,"0")}`) && s.publishDate !== v.scheduledDate){
+        if(!tasksByDate[s.publishDate]) tasksByDate[s.publishDate] = [];
+        tasksByDate[s.publishDate].push({video:v, channel:s});
+      }
+    });
+  });
+  
+  const dows = ["一","二","三","四","五","六","日"];
+  let html = dows.map(d=>`<div class="cgd-dow">${d}</div>`).join("");
+  for(let i=0;i<firstDow;i++) html += `<div class="cal-cell empty"></div>`;
+  for(let d=1;d<=daysInMonth;d++){
+    const ds = `${y}-${String(m+1).padStart(2,"0")}-${String(d).padStart(2,"0")}`;
+    const tasks = tasksByDate[ds];
+    const isTodayFlag = ds === today;
+    const isPast = ds < today;
+    const cls = [isTodayFlag?"today":"", isPast?"past":"", tasks?"has-video":""].filter(Boolean).join(" ");
+    const vidsHTML = tasks ? tasks.map(t=>{
+      const c = state.clients.find(x=>x.id===t.video.clientId);
+      const col = c ? c.color : "#999";
+      const chName = t.channel ? t.channel.name : "";
+      const isPub = t.video.status === "published" || (t.channel && t.channel.published);
+      return `<div class="cal-video ${isPub?"published":""}" style="background:${hexToRgba(col,0.18)};border-left:2px solid ${col}" onclick="event.stopPropagation();openVideoModal('${t.video.id}')">
+        ${chName ? `<span class="cv-client">${esc(c?c.name:"")} · ${esc(chName)}</span>` : `<span class="cv-client">${esc(c?c.name:"")}</span>`}
+        ${esc(t.video.title)}
+      </div>`;
+    }).join("") : "";
+    html += `<div class="cal-cell ${cls}" data-date="${ds}" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event,'${ds}')" onclick="onCalendarDayClick('${ds}')">
+      <div class="cal-cell-date">${d}</div>
+      ${vidsHTML}
+    </div>`;
+  }
+  document.getElementById("calGrid").innerHTML = html;
+  
+  // 渲染视频侧栏
+  renderVideoSidebar();
+  // 渲染未排期提醒
+  renderUnscheduledAlert();
+}
+
+function hexToRgba(hex, a){
+  const h = hex.replace("#","");
+  const r = parseInt(h.substr(0,2),16), g = parseInt(h.substr(2,2),16), b = parseInt(h.substr(4,2),16);
+  return `rgba(${r},${g},${b},${a})`;
+}
+
+function onCalendarDayClick(ds){
+  const tasks = [];
+  state.videos.forEach(v=>{
+    if(v.scheduledDate === ds) tasks.push(v);
+    Object.values(v.channelStates||{}).forEach(s=>{
+      if(s.selected && s.publishDate === ds && s.publishDate !== v.scheduledDate) tasks.push(v);
+    });
+  });
+  if(tasks.length === 0){showToast(ds + " 没有发布任务")}
+}
+
+function changeMonth(delta){calMonthOffset += delta; renderCalendar()}
+function goToToday(){calMonthOffset = 0; renderCalendar()}
+
+// 视频侧栏（按客户分组）
+function renderVideoSidebar(){
+  const sidebar = document.getElementById("videoSidebar");
+  if(state.clients.length === 0){
+    sidebar.innerHTML = `<div style="font-size:12px;color:var(--t3);text-align:center;padding:20px">还没有客户<br>点击右下角 + 添加</div>`;
+    return;
+  }
+  
+  let html = `<div class="sidebar-hint">💡 <b>定稿</b>视频可拖到日历</div>`;
+  
+  state.clients.forEach(c=>{
+    const vids = state.videos.filter(v=>v.clientId===c.id && v.status!=="published");
+    if(vids.length === 0) return;
+    
+    html += `<div class="client-group">
+      <div class="client-label"><span class="client-dot" style="background:${c.color}"></span>${esc(c.name)}</div>`;
+    
+    vids.forEach(v=>{
+      const selChs = videoSelectedChannels(v);
+      const chNames = selChs.length > 0 ? selChs.map(s=>s.name).join(" · ") : "未选渠道";
+      const stMap = {editing:["st-editing","改"],final:["st-final","稿"],pending:["st-pending","待"]};
+      const[stCls,stTxt] = stMap[v.status] || ["st-editing","改"];
+      const draggable = v.status === "final" || v.status === "pending";
+      const chipCls = v.status === "editing" ? "editing" : (v.status === "pending" ? "pending" : "ready");
+      
+      html += `<div class="video-chip ${chipCls}" ${draggable?`draggable="true" ondragstart="onDragStart(event,'${v.id}')" ontouchstart="onTouchStartChip(event,'${v.id}')" ontouchmove="onTouchMoveChip(event)" ontouchend="onTouchEndChip(event)"`:""}>
+        <span class="chip-icon">${v.status==="editing"?"✏️":"🎬"}</span>
+        <div class="chip-info">
+          <div class="chip-title">${esc(v.title)}</div>
+          <div class="chip-meta">${esc(chNames)}${v.scheduledDate?" · "+formatDate(v.scheduledDate):""}</div>
+        </div>
+        <span class="chip-status ${stCls}">${stTxt}</span>
+      </div>`;
+    });
+    
+    html += `</div>`;
+  });
+  
+  if(html === `<div class="sidebar-hint">💡 <b>定稿</b>视频可拖到日历</div>`){
+    html += `<div style="font-size:12px;color:var(--t3);text-align:center;padding:16px">所有视频都已发布 🎉</div>`;
+  }
+  
+  sidebar.innerHTML = html;
+}
+
+// 拖拽逻辑
+let dragVideoId = null;
+let touchDragGhost = null;
+let touchDragging = false;
+
+// 电脑拖拽
+function onDragStart(e, vid){
+  dragVideoId = vid;
+  e.dataTransfer.effectAllowed = "move";
+  e.target.classList.add("dragging");
+  const v = state.videos.find(x=>x.id===vid);
+  if(v){
+    const ghost = document.createElement("div");
+    ghost.textContent = v.title;
+    ghost.style.cssText = "position:absolute;top:-100px;background:rgba(255,255,255,0.9);padding:8px 14px;border-radius:10px;font-size:13px;font-weight:600;border:1px solid #9b7bd4";
+    document.body.appendChild(ghost);
+    e.dataTransfer.setDragImage(ghost, 20, 15);
+    setTimeout(()=>ghost.remove(), 0);
+  }
+}
+function onDragOver(e){
+  e.preventDefault();
+  e.currentTarget.classList.add("drag-over");
+}
+function onDragLeave(e){
+  e.currentTarget.classList.remove("drag-over");
+}
+function onDrop(e, date){
+  e.preventDefault();
+  e.currentTarget.classList.remove("drag-over");
+  document.querySelectorAll(".video-chip.dragging").forEach(el=>el.classList.remove("dragging"));
+  if(dragVideoId) doSchedule(dragVideoId, date);
+  dragVideoId = null;
+}
+
+// 手机触摸拖拽
+function onTouchStartChip(e, vid){
+  dragVideoId = vid;
+  touchDragging = false;
+  const touch = e.touches[0];
+  // 记录起始位置
+  window._touchStart = {x:touch.clientX, y:touch.clientY};
+}
+
+function onTouchMoveChip(e){
+  if(!dragVideoId) return;
+  const touch = e.touches[0];
+  const start = window._touchStart;
+  if(!start) return;
+  
+  const dx = Math.abs(touch.clientX - start.x);
+  const dy = Math.abs(touch.clientY - start.y);
+  
+  // 移动超过5px才算拖拽开始
+  if(!touchDragging && (dx > 5 || dy > 5)){
+    touchDragging = true;
+    e.preventDefault();
+    // 创建跟随手指的幽灵
+    if(touchDragGhost) touchDragGhost.remove();
+    const v = state.videos.find(x=>x.id===dragVideoId);
+    touchDragGhost = document.createElement("div");
+    touchDragGhost.textContent = v ? v.title : "视频";
+    touchDragGhost.style.cssText = "position:fixed;pointer-events:none;z-index:1000;background:rgba(255,255,255,0.95);backdrop-filter:blur(20px);padding:10px 16px;border-radius:14px;font-size:13px;font-weight:600;color:#3d2e1f;border:2px solid #9b7bd4;box-shadow:0 8px 24px rgba(155,123,212,0.3);transform:rotate(-2deg);";
+    document.body.appendChild(touchDragGhost);
+  }
+  
+  if(touchDragging){
+    e.preventDefault();
+    if(touchDragGhost){
+      touchDragGhost.style.left = (touch.clientX - 60) + "px";
+      touchDragGhost.style.top = (touch.clientY - 20) + "px";
+    }
+    // 检测当前手指下方的日历格子
+    document.querySelectorAll(".cal-cell.drag-over").forEach(el=>el.classList.remove("drag-over"));
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cell = el?.closest(".cal-cell");
+    if(cell && !cell.classList.contains("empty")){
+      cell.classList.add("drag-over");
+    }
+  }
+}
+
+function onTouchEndChip(e){
+  if(touchDragging && dragVideoId){
+    const touch = e.changedTouches[0];
+    const el = document.elementFromPoint(touch.clientX, touch.clientY);
+    const cell = el?.closest(".cal-cell");
+    if(cell && !cell.classList.contains("empty")){
+      const date = cell.getAttribute("data-date");
+      if(date) doSchedule(dragVideoId, date);
+    }
+  }
+  
+  document.querySelectorAll(".cal-cell.drag-over").forEach(el=>el.classList.remove("drag-over"));
+  document.querySelectorAll(".video-chip.dragging").forEach(el=>el.classList.remove("dragging"));
+  if(touchDragGhost){touchDragGhost.remove();touchDragGhost=null}
+  dragVideoId = null;
+  touchDragging = false;
+  window._touchStart = null;
+}
+
+// 实际排期操作
+function doSchedule(videoId, date){
+  const v = state.videos.find(x=>x.id===videoId);
+  if(!v) return;
+  
+  v.scheduledDate = date;
+  if(v.status === "final") v.status = "pending";
+  
+  const selChs = videoSelectedChannels(v);
+  selChs.forEach(s=>{
+    if(!s.publishDate){
+      v.channelStates[s.id].publishDate = date;
+    }
+  });
+  
+  save();
+  render();
+  showToast(`已排期到 ${formatDate(date)}`);
+  dragVideoId = null;
+}
+
+// 未排期提醒
+function renderUnscheduledAlert(){
+  const alert = document.getElementById("unscheduledAlert");
+  // 找出所有定稿/待发布但没有排期日期的视频
+  const unscheduled = state.videos.filter(v=>!v.scheduledDate && (v.status==="final" || v.status==="pending"));
+  // 也找出有选中渠道但没有 publishDate 的
+  const unschedChannels = [];
+  state.videos.forEach(v=>{
+    if(v.status === "published") return;
+    const selChs = videoSelectedChannels(v);
+    selChs.forEach(s=>{
+      if(!s.publishDate && !v.scheduledDate){
+        const c = state.clients.find(x=>x.id===v.clientId);
+        unschedChannels.push({client:c, video:v, channel:s});
+      }
+    });
+  });
+  
+  if(unscheduled.length === 0 && unschedChannels.length === 0){
+    alert.classList.remove("show");
+    alert.innerHTML = "";
+    return;
+  }
+  
+  const items = unscheduled.map(v=>{
+    const c = state.clients.find(x=>x.id===v.clientId);
+    return `<div class="unsched-item">
+      <span>${esc(c?c.name:"")} · ${esc(v.title)}</span>
+      <button class="section-a" onclick="openVideoModal('${v.id}')">手动排期 ›</button>
+    </div>`;
+  }).join("");
+  
+  const chItems = unschedChannels.length > 0 ? unschedChannels.slice(0,5).map(u=>{
+    return `<div class="unsched-item">
+      <span>${esc(u.client?u.client.name:"")} · ${esc(u.channel.name)}</span>
+      <button class="section-a" onclick="openVideoModal('${u.video.id}')">排期 ›</button>
+    </div>`;
+  }).join("") : "";
+  
+  alert.classList.add("show");
+  alert.innerHTML = `<div class="unsched-title">⚠️ ${unscheduled.length + unschedChannels.length} 个视频/渠道未排期</div>
+    ${items}
+    ${chItems}
+    <div style="margin-top:8px"><button class="btn btn-primary" style="width:100%" onclick="openAutoSchedule()">⚡ 一键自动排期</button></div>`;
+}
+
+// ============================================================
+// 自动排期 — 同客户同渠道不连续两天规则
+// ============================================================
+function openAutoSchedule(){
+  // 找出所有需要排期的视频（定稿/待发布但没有排期日期）
+  const unscheduled = state.videos.filter(v=>!v.scheduledDate && (v.status==="final" || v.status==="pending"));
+  if(unscheduled.length === 0){
+    showToast("没有需要排期的视频");
+    return;
+  }
+  
+  // 预演排期，生成结果预览
+  const result = simulateAutoSchedule();
+  
+  const body = document.getElementById("autoBody");
+  document.getElementById("autoTitle").textContent = "⚡ 自动排期";
+  body.innerHTML = `
+    <div class="auto-row">
+      <span class="label">可排期视频</span>
+      <span class="value">${unscheduled.length} 个</span>
+    </div>
+    <div class="auto-row">
+      <span class="label">排期规则</span>
+      <span class="value">同客户同渠道不连续两天</span>
+    </div>
+    <div class="auto-row">
+      <span class="label">起始日期</span>
+      <span class="value">今天起往后</span>
+    </div>
+    <div class="auto-preview">
+      📅 预排结果：<br>
+      ${result.scheduled.length > 0 ? result.scheduled.map(s=>`${s.date} — ${s.client} · ${s.title}`).join("<br>") : "无"}
+      ${result.unscheduled.length > 0 ? `<div class="unsched">⚠️ ${result.unscheduled.length} 个未排上：<br>${result.unscheduled.map(u=>`${u.client} · ${u.title}`).join("<br>")}</div>` : ""}
+    </div>
+    <div class="auto-actions">
+      <div class="auto-btn secondary" onclick="closeAutoSchedule()">取消</div>
+      <div class="auto-btn primary" onclick="confirmAutoSchedule()">确认排期</div>
+    </div>
+  `;
+  document.getElementById("autoModal").classList.add("show");
+}
+
+function closeAutoSchedule(){
+  document.getElementById("autoModal").classList.remove("show");
+}
+
+function onAutoOverlay(e){
+  if(e.target.id === "autoModal") closeAutoSchedule();
+}
+
+// 模拟排期（不实际修改数据）
+function simulateAutoSchedule(){
+  const unsched = state.videos.filter(v=>!v.scheduledDate && (v.status==="final" || v.status==="pending"));
+  const today = new Date();
+  today.setHours(0,0,0,0);
+  
+  // 建立已有排期映射：日期 → [{clientId, channelId}]
+  const dateMap = {};
+  state.videos.forEach(v=>{
+    if(v.scheduledDate){
+      if(!dateMap[v.scheduledDate]) dateMap[v.scheduledDate] = [];
+      videoSelectedChannels(v).forEach(s=>{
+        dateMap[v.scheduledDate].push({clientId:v.clientId, channelId:s.id});
+      });
+    }
+    Object.entries(v.channelStates||{}).forEach(([cid,s])=>{
+      if(s.selected && s.publishDate && s.publishDate !== v.scheduledDate){
+        if(!dateMap[s.publishDate]) dateMap[s.publishDate] = [];
+        dateMap[s.publishDate].push({clientId:v.clientId, channelId:cid});
+      }
+    });
+  });
+  
+  const scheduled = [];
+  const failedToSchedule = [];
+  
+  for(const v of unsched){
+    const c = state.clients.find(x=>x.id===v.clientId);
+    const selChs = videoSelectedChannels(v);
+    if(selChs.length === 0){
+      failedToSchedule.push({client:c?c.name:"", title:v.title, videoId:v.id, reason:"未选渠道"});
+      continue;
+    }
+    let placed = false;
+    
+    // 从今天起往后找，最多找60天
+    for(let i=0;i<60;i++){
+      const tryDate = new Date(today);
+      tryDate.setDate(tryDate.getDate()+i);
+      const ds = dayStr(tryDate);
+      const prevDate = new Date(tryDate);
+      prevDate.setDate(prevDate.getDate()-1);
+      const prevDs = dayStr(prevDate);
+      
+      // 检查每个选中渠道：
+      // 1. 这个渠道今天是否已经排过（同一天同一渠道只能一条）
+      // 2. 这个渠道昨天是否排过（不能连续两天）
+      const todayUsed = (dateMap[ds]||[]).some(entry=>{
+        return selChs.some(s=>entry.clientId===v.clientId && entry.channelId===s.id);
+      });
+      if(todayUsed) continue;
+      
+      const yesterdayUsed = (dateMap[prevDs]||[]).some(entry=>{
+        return selChs.some(s=>entry.clientId===v.clientId && entry.channelId===s.id);
+      });
+      if(yesterdayUsed) continue;
+      
+      // 排到这天
+      if(!dateMap[ds]) dateMap[ds] = [];
+      selChs.forEach(s=>{
+        dateMap[ds].push({clientId:v.clientId, channelId:s.id});
+      });
+      
+      scheduled.push({
+        videoId:v.id,
+        date:formatDate(ds),
+        ds:ds,
+        client:c?c.name:"",
+        title:v.title
+      });
+      placed = true;
+      break;
+    }
+    
+    if(!placed){
+      failedToSchedule.push({client:c?c.name:"", title:v.title, videoId:v.id});
+    }
+  }
+  
+  return {scheduled, unscheduled:failedToSchedule};
+}
+
+function confirmAutoSchedule(){
+  const result = simulateAutoSchedule();
+  
+  // 实际写入排期
+  result.scheduled.forEach(s=>{
+    const v = state.videos.find(x=>x.id===s.videoId);
+    if(v){
+      v.scheduledDate = s.ds;
+      if(v.status === "final") v.status = "pending";
+      // 给未设日期的渠道也设上
+      Object.entries(v.channelStates||{}).forEach(([cid,st])=>{
+        if(st.selected && !st.publishDate){
+          st.publishDate = s.ds;
+        }
+      });
+    }
+  });
+  
+  save();
+  render();
+  closeAutoSchedule();
+  
+  if(result.unscheduled.length > 0){
+    showToast(`已排 ${result.scheduled.length} 个，${result.unscheduled.length} 个未排上`);
+  } else {
+    showToast(`已排 ${result.scheduled.length} 个视频 🎉`);
+  }
+}
+
+// ============================================================
+// 客户操作
+// ============================================================
+function deleteClient(id){
+  const c = state.clients.find(x=>x.id===id);
+  const vidCount = clientVideos(id).length;
+  const msg = vidCount > 0 
+    ? `确认删除客户「${c.name}」？\n该客户名下有 ${vidCount} 条视频，将一并删除。`
+    : `确认删除客户「${c.name}」？`;
+  if(!confirm(msg)) return;
+  state.clients = state.clients.filter(x=>x.id!==id);
+  state.videos = state.videos.filter(v=>v.clientId!==id);
+  save();
+  if(currentClientId === id){currentClientId = null; switchPage("home")}
+  else render();
+  showToast("已删除");
+}
+
+function openClientModal(id){
+  const isEdit = !!id;
+  const c = id ? state.clients.find(x=>x.id===id) : {name:"",color:CLIENT_COLORS[state.clients.length % CLIENT_COLORS.length]};
+  
+  document.getElementById("modalTitle").textContent = isEdit ? "编辑客户" : "新增客户";
+  const colorHTML = CLIENT_COLORS.map(col=>`<div class="color-opt ${col===c.color?"active":""}" style="background:${col}" onclick="pickColor(this,'${col}')"></div>`).join("");
+  
+  document.getElementById("modalBody").innerHTML = `
+    <div class="fg">
+      <label class="fl">客户名称</label>
+      <input class="fi" id="clientName" type="text" placeholder="输入客户名" value="${esc(c.name)}">
+    </div>
+    <div class="fg">
+      <label class="fl">标识颜色</label>
+      <div class="color-picker" id="colorPicker">${colorHTML}</div>
+    </div>
+    ${isEdit?`<div class="fg"><div style="font-size:12px;color:var(--t3);padding:8px;background:var(--bg);border-radius:var(--rs);">💡 该客户有 ${c.channels.length} 个发布渠道，可在客户详情页点击「渠道」管理</div></div>`:`<div class="fg"><div style="font-size:12px;color:var(--t3);padding:8px;background:var(--bg);border-radius:var(--rs);">💡 新建后自动生成 4 个默认渠道（视频号/抖音/小红书/B站），可在客户详情页修改</div></div>`}
+    <div class="modal-actions">
+      ${isEdit?`<button class="btn btn-danger" onclick="deleteClient('${id}');closeModal()">删除</button>`:""}
+      <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+      <button class="btn btn-primary" onclick="saveClient('${id||""}')">保存</button>
+    </div>
+  `;
+  showModal();
+  setTimeout(()=>document.getElementById("clientName")?.focus(),300);
+}
+
+let pickedColor = "";
+function pickColor(el,col){
+  document.querySelectorAll("#colorPicker .color-opt").forEach(e=>e.classList.remove("active"));
+  el.classList.add("active");
+  pickedColor = col;
+}
+
+function saveClient(id){
+  const name = document.getElementById("clientName").value.trim();
+  if(!name){showToast("请输入客户名");return}
+  const color = pickedColor || CLIENT_COLORS[0];
+  
+  if(id){
+    const c = state.clients.find(x=>x.id===id);
+    if(c){c.name=name;c.color=color}
+  } else {
+    state.clients.push({id:uid(),name,color,channels:DEFAULT_CHANNELS.map(ch=>({id:uid(),name:ch.name})),createdAt:Date.now()});
+  }
+  save();
+  closeModal();
+  pickedColor = "";
+  render();
+  showToast(id?"已更新":"已添加");
+}
+
+// ============================================================
+// 渠道管理
+// ============================================================
+function openChannelManager(){
+  if(!currentClientId) return;
+  const c = state.clients.find(x=>x.id===currentClientId);
+  if(!c) return;
+  
+  document.getElementById("modalTitle").textContent = `${c.name} · 渠道管理`;
+  
+  const listHTML = c.channels.map(ch=>`
+    <div class="ch-mgr-item" style="flex-direction:column;align-items:stretch;gap:6px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <span style="font-size:16px">📺</span>
+        <input class="fi" style="flex:1;padding:8px 10px;font-size:14px" value="${esc(ch.name)}" data-ch-id="${ch.id}" onchange="updateChannelName('${ch.id}', this.value)" placeholder="渠道名称">
+        <button class="del" onclick="deleteChannel('${ch.id}')" title="删除">✕</button>
+      </div>
+      <div style="display:flex;align-items:center;gap:6px">
+        <span style="font-size:12px;color:var(--t3);flex-shrink:0">🔗</span>
+        <input class="fi" style="flex:1;padding:6px 10px;font-size:12px" value="${esc(ch.url||"")}" onchange="updateChannelUrl('${ch.id}', this.value)" placeholder="主页链接（可选，如抖音主页URL）">
+        ${ch.url?`<button class="c-act" style="flex-shrink:0" onclick="window.open('${esc(ch.url)}','_blank')">访问</button>`:""}
+      </div>
+    </div>
+  `).join("");
+  
+  document.getElementById("modalBody").innerHTML = `
+    <div style="margin-bottom:12px;font-size:12px;color:var(--t3);line-height:1.5">
+      💡 渠道就是发布目标。一个客户有「工作视频号」「生活视频号」就分别建两个。<br>🔗 可填主页链接，点「访问」直接跳转。
+    </div>
+    <div id="channelMgrList">${listHTML}</div>
+    <button class="btn btn-secondary" style="margin-top:8px;width:100%" onclick="addChannel()">+ 添加渠道</button>
+    <div class="modal-actions">
+      <button class="btn btn-primary" onclick="closeModal()">完成</button>
+    </div>
+  `;
+  showModal();
+}
+
+function addChannel(){
+  const c = state.clients.find(x=>x.id===currentClientId);
+  if(!c) return;
+  c.channels.push({id:uid(), name:"新渠道", url:""});
+  save();
+  openChannelManager();
+  setTimeout(()=>{
+    const inputs = document.querySelectorAll("#channelMgrList input");
+    if(inputs.length > 0){
+      const last = inputs[inputs.length-2]; // 倒数第二个是名字输入框
+      if(last){last.focus();last.select()}
+    }
+  }, 100);
+}
+
+function updateChannelName(chId, name){
+  const c = state.clients.find(x=>x.id===currentClientId);
+  if(!c) return;
+  const ch = c.channels.find(x=>x.id===chId);
+  if(ch){ch.name = name; save()}
+}
+
+function updateChannelUrl(chId, url){
+  const c = state.clients.find(x=>x.id===currentClientId);
+  if(!c) return;
+  const ch = c.channels.find(x=>x.id===chId);
+  if(ch){ch.url = url; save()}
+}
+
+function deleteChannel(chId){
+  const c = state.clients.find(x=>x.id===currentClientId);
+  if(!c) return;
+  if(c.channels.length <= 1){showToast("至少保留 1 个渠道");return}
+  // 检查是否有视频用到了这个渠道
+  const usedCount = state.videos.filter(v=>v.clientId===currentClientId && v.channelStates && v.channelStates[chId] && v.channelStates[chId].selected).length;
+  if(usedCount > 0){
+    if(!confirm(`有 ${usedCount} 条视频选了这个渠道，删除后这些视频的该渠道发布记录也会删除。继续？`)) return;
+    state.videos.forEach(v=>{
+      if(v.clientId===currentClientId && v.channelStates && v.channelStates[chId]){
+        delete v.channelStates[chId];
+      }
+    });
+  }
+  c.channels = c.channels.filter(x=>x.id!==chId);
+  save();
+  openChannelManager();
+  showToast("已删除渠道");
+}
+
+// ============================================================
+// 视频操作
+// ============================================================
+function deleteVideo(id){
+  if(!confirm("确认删除此视频？")) return;
+  state.videos = state.videos.filter(v=>v.id!==id);
+  save();
+  render();
+  showToast("已删除");
+}
+
+let editingVideoId = null;
+function openVideoModal(id){
+  const isEdit = !!id;
+  editingVideoId = id || null;
+  const v = id ? state.videos.find(x=>x.id===id) : {
+    title:"", status:"editing", scheduledDate:"", channelStates:{}, note:"", clientId:currentClientId
+  };
+  
+  const client = state.clients.find(x=>x.id===v.clientId) || state.clients[0];
+  if(!client){showToast("请先创建客户");return}
+  
+  // 确保视频有该客户所有渠道的 state
+  if(!v.channelStates) v.channelStates = {};
+  client.channels.forEach(ch=>{
+    if(!v.channelStates[ch.id]){
+      v.channelStates[ch.id] = {selected:false, published:false, publishDate:""};
+    }
+  });
+  
+  const clientOptions = state.clients.map(c=>
+    `<option value="${c.id}" ${c.id===v.clientId?"selected":""}>${esc(c.name)}</option>`
+  ).join("");
+  
+  document.getElementById("modalTitle").textContent = isEdit ? "编辑视频" : "新增视频";
+  
+  const statusBtns = [
+    {k:"editing",t:"修改中"},
+    {k:"final",t:"已定稿"},
+    {k:"pending",t:"待发布"},
+    {k:"published",t:"已发完"}
+  ].map(s=>`<button class="sel-btn ${v.status===s.k?"active":""}" data-status="${s.k}" onclick="pickStatus(this)">${s.t}</button>`).join("");
+  
+  // 渠道勾选列表
+  const chChecks = client.channels.map(ch=>{
+    const s = v.channelStates[ch.id] || {selected:false, published:false, publishDate:""};
+    return `<div class="ch-check ${s.selected?"active":""}" data-ch-id="${ch.id}" onclick="toggleChannel(this)">
+      <div class="box">${s.selected?"✓":""}</div>
+      <div class="name">${esc(ch.name)}${ch.url?` <span style="font-size:11px;cursor:pointer" onclick="event.stopPropagation();window.open('${esc(ch.url)}','_blank')">🔗</span>`:""}</div>
+      <div class="date">${s.publishDate || "未发"}</div>
+      ${s.selected?`<input class="date-input" type="date" value="${s.publishDate||""}" onclick="event.stopPropagation()" onchange="updateChannelDate('${ch.id}', this.value)" title="发布日期">`:""}
+    </div>`;
+  }).join("");
+  
+  // 新增模式：简洁字段；编辑模式：全部展开
+  if(!isEdit){
+    document.getElementById("modalBody").innerHTML = `
+      <div class="fg">
+        <label class="fl">所属客户</label>
+        <select class="fsel" id="vClient" onchange="onVideoClientChange()">
+          <option value="">请选择客户</option>
+          ${clientOptions}
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">视频标题</label>
+        <input class="fi" id="vTitle" type="text" placeholder="输入视频标题（或用日期+序号）">
+      </div>
+      <div class="fg">
+        <label class="fl">备注（可选）</label>
+        <textarea class="ft" id="vNote" placeholder="客户要求、修改意见等..." style="min-height:50px"></textarea>
+      </div>
+      <div style="font-size:12px;color:var(--t3);padding:8px;background:rgba(255,255,255,0.3);border-radius:10px;margin-bottom:10px">
+        💡 新视频默认「修改中」状态，渠道默认全部勾选。<br>定稿后到日历页拖拽排期。
+      </div>
+      <button class="ai-btn" onclick="openAIAssistant('')">
+        <span class="icon">✨</span> AI 助手 · 写脚本 / 写文案 / 分析视频
+      </button>
+      <div class="modal-actions">
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveVideo()">保存</button>
+      </div>
+    `;
+    // 新增时默认勾选所有渠道
+    setTimeout(()=>{
+      document.querySelectorAll("#chChecks-placeholder").forEach(()=>{});
+      // 直接在 saveVideo 里处理
+    },0);
+  } else {
+    document.getElementById("modalBody").innerHTML = `
+      <div class="fg">
+        <label class="fl">视频标题</label>
+        <input class="fi" id="vTitle" type="text" placeholder="输入视频标题" value="${esc(v.title)}">
+      </div>
+      <div class="fg">
+        <label class="fl">所属客户</label>
+        <select class="fsel" id="vClient" onchange="onVideoClientChange()">
+          <option value="">请选择客户</option>
+          ${clientOptions}
+        </select>
+      </div>
+      <div class="fg">
+        <label class="fl">状态</label>
+        <div class="sel-row" id="statusRow">${statusBtns}</div>
+      </div>
+      <div class="fg">
+        <label class="fl">排期日期（整体）</label>
+        <input class="fi" id="vDate" type="date" value="${v.scheduledDate||""}">
+      </div>
+      <div class="fg">
+        <label class="fl">发布渠道（点击勾选，可各自设发布日）</label>
+        <div class="ch-checks" id="chChecks">${chChecks}</div>
+      </div>
+      <div class="fg">
+        <label class="fl">备注</label>
+        <textarea class="ft" id="vNote" placeholder="修改意见、客户要求等...">${esc(v.note||"")}</textarea>
+      </div>
+      <button class="ai-btn" onclick="openAIAssistant('${id}')">
+        <span class="icon">✨</span> AI 助手 · 写脚本 / 写文案 / 分析视频
+      </button>
+      <div class="modal-actions">
+        <button class="btn btn-danger" onclick="deleteVideo('${id}');closeModal()">删除</button>
+        <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+        <button class="btn btn-primary" onclick="saveVideo()">保存</button>
+      </div>
+    `;
+  }
+  showModal();
+  setTimeout(()=>document.getElementById("vTitle")?.focus(),300);
+}
+
+function pickStatus(el){
+  document.querySelectorAll("#statusRow .sel-btn").forEach(b=>b.classList.remove("active"));
+  el.classList.add("active");
+}
+
+function toggleChannel(el){
+  const active = el.classList.toggle("active");
+  const box = el.querySelector(".box");
+  if(active){
+    box.textContent = "✓";
+    // 添加日期输入框
+    const existing = el.querySelector(".date-input");
+    if(!existing){
+      const dateInput = document.createElement("input");
+      dateInput.type = "date";
+      dateInput.className = "date-input";
+      dateInput.value = todayStr();
+      dateInput.onclick = (e)=>e.stopPropagation();
+      dateInput.onchange = (e)=>{el.querySelector(".date").textContent = e.target.value || "未发"};
+      el.appendChild(dateInput);
+    }
+    el.querySelector(".date").textContent = todayStr();
+  } else {
+    box.textContent = "";
+    el.querySelector(".date").textContent = "未发";
+    const di = el.querySelector(".date-input");
+    if(di) di.remove();
+  }
+}
+
+function updateChannelDate(chId, date){
+  const el = document.querySelector(`.ch-check[data-ch-id="${chId}"]`);
+  if(el){el.querySelector(".date").textContent = date || "未发"}
+}
+
+function onVideoClientChange(){
+  // 切换客户时重新渲染渠道列表
+  const newClientId = document.getElementById("vClient").value;
+  if(!newClientId) return;
+  const client = state.clients.find(x=>x.id===newClientId);
+  if(!client) return;
+  
+  const chChecks = client.channels.map(ch=>{
+    return `<div class="ch-check" data-ch-id="${ch.id}" onclick="toggleChannel(this)">
+      <div class="box"></div>
+      <div class="name">${esc(ch.name)}</div>
+      <div class="date">未发</div>
+    </div>`;
+  }).join("");
+  document.getElementById("chChecks").innerHTML = chChecks;
+}
+
+function saveVideo(){
+  const title = document.getElementById("vTitle").value.trim();
+  if(!title){showToast("请输入标题");return}
+  const clientId = document.getElementById("vClient").value;
+  if(!clientId){showToast("请选择客户");return}
+  
+  const client = state.clients.find(x=>x.id===clientId);
+  if(!client){showToast("客户不存在");return}
+  
+  if(editingVideoId){
+    // 编辑模式：收集所有字段
+    const status = document.querySelector("#statusRow .sel-btn.active")?.dataset.status || "editing";
+    const scheduledDate = document.getElementById("vDate").value;
+    const note = document.getElementById("vNote").value.trim();
+    
+    const channelStates = {};
+    document.querySelectorAll("#chChecks .ch-check").forEach(el=>{
+      const chId = el.dataset.chId;
+      const selected = el.classList.contains("active");
+      const dateInput = el.querySelector(".date-input");
+      const publishDate = dateInput ? (dateInput.value || "") : "";
+      channelStates[chId] = {
+        selected: selected,
+        published: selected && publishDate !== "",
+        publishDate: publishDate
+      };
+    });
+    
+    const v = state.videos.find(x=>x.id===editingVideoId);
+    if(v){
+      v.title=title;v.clientId=clientId;v.status=status;v.scheduledDate=scheduledDate;v.note=note;
+      v.channelStates = channelStates;
+      if(isVideoFullyPublished(v) && status!=="published"){
+        v.status = "published";
+        showToast("所有渠道已发，自动标记为已发完 🎉");
+      }
+    }
+  } else {
+    // 新增模式：默认修改中状态，默认全选渠道
+    const note = document.getElementById("vNote")?.value.trim() || "";
+    const channelStates = {};
+    client.channels.forEach(ch=>{
+      channelStates[ch.id] = {selected:true, published:false, publishDate:""};
+    });
+    
+    const v = {id:uid(),title,clientId,status:"editing",scheduledDate:"",channelStates,note,createdAt:Date.now()};
+    state.videos.push(v);
+  }
+  
+  save();
+  closeModal();
+  editingVideoId = null;
+  render();
+  showToast("已保存");
+}
+
+// ============================================================
+// 设置
+// ============================================================
+function openSettings(){
+  const s = state.settings;
+  document.getElementById("modalTitle").textContent = "设置";
+  document.getElementById("modalBody").innerHTML = `
+    <div class="settings-list" style="margin-bottom:14px">
+      <div class="s-item" onclick="editSetting('publishInterval','发布间隔（天）','number')">
+        <div class="s-item-label"><span class="s-item-icon">📅</span>发布间隔</div>
+        <div class="s-item-value">每 ${s.publishInterval} 天一条</div>
+      </div>
+      <div class="s-item" onclick="editSetting('remindThreshold','提醒阈值（条）','number')">
+        <div class="s-item-label"><span class="s-item-icon">⚠️</span>存货提醒阈值</div>
+        <div class="s-item-value">≤ ${s.remindThreshold} 条时提醒</div>
+      </div>
+      <div class="s-item" onclick="editSetting('monthlyTarget','每客户月度目标（条）','number')">
+        <div class="s-item-label"><span class="s-item-icon">🎯</span>月度目标</div>
+        <div class="s-item-value">每客户 ${s.monthlyTarget} 条/月</div>
+      </div>
+    </div>
+    <div class="settings-list" style="margin-bottom:14px">
+      <div class="s-item" onclick="editAPIKey()">
+        <div class="s-item-label"><span class="s-item-icon">✨</span>AI 助手</div>
+        <div class="s-item-value">${(() => {
+          let n = 0;
+          if(s.zhipuKey) n++;
+          if(s.deepseekKey) n++;
+          if(s.aicmKey) n++;
+          return n>0 ? n+"个AI已配置 ✓" : "未配置";
+        })()}</div>
+      </div>
+      <div class="s-item" onclick="changeBackground()">
+        <div class="s-item-label"><span class="s-item-icon">🖼️</span>背景图</div>
+        <div class="s-item-value">${localStorage.getItem("bg_image") ? "已设置 ✓" : "默认"}</div>
+      </div>
+      <div class="s-item" onclick="openCloudSync()">
+        <div class="s-item-label"><span class="s-item-icon">☁️</span>云端同步</div>
+        <div class="s-item-value">${s.cloudSync ? (s.lastSyncAt ? "已同步 ✓" : "已开启") : "未开启"}</div>
+      </div>
+    </div>
+    <div class="settings-list" style="margin-bottom:14px">
+      <div class="s-item" onclick="installApp()">
+        <div class="s-item-label"><span class="s-item-icon">📲</span>安装到桌面</div>
+        <div class="s-item-value">添加到主屏幕</div>
+      </div>
+      <div class="s-item" onclick="exportData()">
+        <div class="s-item-label"><span class="s-item-icon">📤</span>导出备份</div>
+        <div class="s-item-value">保存到文件</div>
+      </div>
+      <div class="s-item" onclick="importData()">
+        <div class="s-item-label"><span class="s-item-icon">📥</span>导入备份</div>
+        <div class="s-item-value">从文件恢复</div>
+      </div>
+    </div>
+    <div class="settings-list">
+      <div class="s-item danger" onclick="resetData()">
+        <div class="s-item-label"><span class="s-item-icon">🗑</span>清空所有数据</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal()">关闭</button>
+    </div>
+  `;
+  showModal();
+}
+
+// 云端同步设置
+function openCloudSync(){
+  const s = state.settings;
+  const lastTime = s.lastSyncAt ? new Date(s.lastSyncAt).toLocaleString("zh-CN") : "从未同步";
+  document.getElementById("modalTitle").textContent = "云端同步";
+  document.getElementById("modalBody").innerHTML = `
+    <div style="background:rgba(79,124,255,0.1);border-radius:var(--rs);padding:12px;margin-bottom:14px;font-size:12px;color:#4f7cff;line-height:1.6">
+      <b style="font-size:13px;display:block;margin-bottom:4px">☁️ 云端同步</b>
+      开启后，你的数据会自动同步到云端。<br>
+      手机和 iPad 打开同一个链接，数据自动保持一致。<br>
+      每次修改自动上传，打开时自动拉取最新。
+    </div>
+    <div class="settings-list" style="margin-bottom:14px">
+      <div class="s-item" onclick="toggleCloudSync()">
+        <div class="s-item-label"><span class="s-item-icon">☁️</span>云端同步</div>
+        <div class="s-item-value">${s.cloudSync ? "已开启 ✓" : "已关闭"}</div>
+      </div>
+    </div>
+    <div style="font-size:12px;color:var(--t2);margin-bottom:14px;line-height:1.8">
+      <div>📊 上次同步：${lastTime}</div>
+      <div>🔗 数据库：${s.supabaseUrl ? "已连接" : "未配置"}</div>
+    </div>
+    <div class="settings-list" style="margin-bottom:14px">
+      <div class="s-item" onclick="cloudPullNow()">
+        <div class="s-item-label"><span class="s-item-icon">⬇️</span>从云端拉取</div>
+        <div class="s-item-value">覆盖本地数据</div>
+      </div>
+      <div class="s-item" onclick="cloudPushNow()">
+        <div class="s-item-label"><span class="s-item-icon">⬆️</span>上传到云端</div>
+        <div class="s-item-value">推送当前数据</div>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal();openSettings()">返回</button>
+    </div>
+  `;
+  showModal();
+}
+
+function toggleCloudSync(){
+  state.settings.cloudSync = !state.settings.cloudSync;
+  save();
+  closeModal();
+  openCloudSync();
+  showToast(state.settings.cloudSync ? "云端同步已开启 ✓" : "云端同步已关闭");
+}
+
+function cloudPullNow(){
+  showToast("正在从云端拉取...");
+  cloudPull(function(ok){
+    if(!ok) showToast("云端暂无数据");
+  });
+}
+
+function cloudPushNow(){
+  showToast("正在上传到云端...");
+  cloudPush(false);
+}
+
+
+function editAPIKey(){
+  const s = state.settings;
+  document.getElementById("modalTitle").textContent = "配置 AI 助手";
+  document.getElementById("modalBody").innerHTML = `
+    <div style="background:var(--purple-bg);border-radius:var(--rs);padding:12px;margin-bottom:14px;font-size:12px;color:var(--purple);line-height:1.6">
+      <b style="font-size:13px;display:block;margin-bottom:4px">✨ AI 自动分工</b>
+      填入密钥后，系统根据任务自动选 AI：<br>
+      📝 写脚本 → DeepSeek<br>
+      🎬 分析视频 → 智谱<br>
+      ✍️ 写文案/标题 → 智谱<br>
+      💬 问答/分析图片 → AICodeMirror<br>
+      <span style="opacity:.8">哪个不填就跳过，用其他 AI 代替。</span>
+    </div>
+    
+    <div class="fg">
+      <label class="fl">📝 智谱 API Key（分析视频 + 写文案）</label>
+      <input class="fi" id="zhipuKeyInput" type="text" placeholder="open.bigmodel.cn 获取" value="${esc(s.zhipuKey||"")}">
+    </div>
+    
+    <div class="fg">
+      <label class="fl">🤖 DeepSeek API Key（写脚本）</label>
+      <input class="fi" id="deepseekKeyInput" type="text" placeholder="platform.deepseek.com 获取" value="${esc(s.deepseekKey||"")}">
+    </div>
+    
+    <div class="fg">
+      <label class="fl">💬 AICodeMirror API Key（问答 + 分析图片）</label>
+      <input class="fi" id="aicmKeyInput" type="text" placeholder="aicodemirror.ai 获取" value="${esc(s.aicmKey||"")}">
+    </div>
+    
+    <div style="font-size:11px;color:var(--t3);margin-bottom:10px">所有密钥只存在你手机本地，不会上传到任何服务器。</div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal();openSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveAPIKey()">保存</button>
+    </div>
+  `;
+}
+
+function saveAPIKey(){
+  state.settings.zhipuKey = document.getElementById("zhipuKeyInput").value.trim();
+  state.settings.deepseekKey = document.getElementById("deepseekKeyInput").value.trim();
+  state.settings.aicmKey = document.getElementById("aicmKeyInput").value.trim();
+  // 兼容旧字段
+  state.settings.apiKey = state.settings.zhipuKey || "";
+  save();
+  closeModal();
+  openSettings();
+  const has = state.settings.zhipuKey || state.settings.deepseekKey || state.settings.aicmKey;
+  showToast(has ? "AI 助手已配置 ✓" : "已清除所有密钥");
+}
+
+// AI 助手主界面
+let aiCurrentVideoId = null;
+let aiCurrentTab = "script";
+let aiVideoBase64 = null;
+let aiVideoFileName = "";
+
+function openAIAssistant(videoId){
+  if(!state.settings.apiKey){
+    if(!confirm("使用 AI 助手需要先配置智谱 API Key。\n\n是否现在去配置？")) return;
+    editAPIKey();
+    return;
+  }
+  aiCurrentVideoId = videoId || null;
+  aiCurrentTab = "script";
+  aiVideoBase64 = null;
+  aiVideoFileName = "";
+  
+  const v = videoId ? state.videos.find(x=>x.id===videoId) : null;
+  const c = v ? state.clients.find(x=>x.id===v.clientId) : null;
+  
+  document.getElementById("modalTitle").textContent = "✨ AI 助手";
+  document.getElementById("modalBody").innerHTML = `
+    <div class="ai-modal-body">
+      <div style="font-size:13px;color:var(--t2);margin-bottom:10px;padding:8px 10px;background:var(--bg);border-radius:var(--rs)">
+        ${v ? `当前视频：<b>${esc(v.title)}</b>${c?" · "+esc(c.name):""}` : "请选择功能"}
+      </div>
+      <div class="ai-tabs">
+        <div class="ai-tab active" onclick="switchAITab('script')">📝 写脚本</div>
+        <div class="ai-tab" onclick="switchAITab('copy')">✍️ 写文案</div>
+        <div class="ai-tab" onclick="switchAITab('video')">🎬 分析视频</div>
+        <div class="ai-tab" onclick="switchAITab('describe')">💭 描述分析</div>
+      </div>
+      <div id="aiContent"></div>
+    </div>
+  `;
+  showModal();
+  renderAITab();
+}
+
+function switchAITab(tab, el){
+  aiCurrentTab = tab;
+  document.querySelectorAll(".ai-tab").forEach(t=>t.classList.remove("active"));
+  const target = el || event?.target;
+  if(target) target.classList.add("active");
+  renderAITab();
+}
+
+function renderAITab(){
+  const content = document.getElementById("aiContent");
+  const v = aiCurrentVideoId ? state.videos.find(x=>x.id===aiCurrentVideoId) : null;
+  const c = v ? state.clients.find(x=>x.id===v.clientId) : null;
+  
+  if(aiCurrentTab === "script"){
+    content.innerHTML = `
+      <div class="fg">
+        <label class="fl">视频主题 / 补充要求</label>
+        <textarea class="ai-prompt-input" id="aiPrompt" placeholder="比如：${v?esc(v.title):"夏季新品口红试色"}的口播脚本，要有开头钩子，30秒左右">${v?esc(v.title):""}</textarea>
+      </div>
+      <div class="fg">
+        <label class="fl">脚本类型</label>
+        <div class="sel-row" id="scriptTypeRow">
+          <button class="sel-btn active" data-type="口播脚本" onclick="pickScriptType(this)">口播脚本</button>
+          <button class="sel-btn" data-type="分镜脚本" onclick="pickScriptType(this)">分镜脚本</button>
+          <button class="sel-btn" data-type="短剧脚本" onclick="pickScriptType(this)">短剧脚本</button>
+        </div>
+      </div>
+      <button class="ai-btn" onclick="generateScript()"><span class="icon">✨</span> 生成脚本</button>
+      <div id="aiResultArea"></div>
+    `;
+  } else if(aiCurrentTab === "copy"){
+    content.innerHTML = `
+      <div class="fg">
+        <label class="fl">视频内容描述</label>
+        <textarea class="ai-prompt-input" id="aiPrompt" placeholder="描述视频内容，比如：${v?esc(v.title):"新品口红试色"}，3个色号，近景特写">${v?esc(v.title):""}</textarea>
+      </div>
+      <div class="fg">
+        <label class="fl">需要的文案类型（可多选）</label>
+        <div class="sel-row" id="copyTypeRow" style="flex-direction:column;gap:6px">
+          <button class="sel-btn active" data-type="标题" onclick="this.classList.toggle('active')">📌 吸引人的标题（5个）</button>
+          <button class="sel-btn active" data-type="开头" onclick="this.classList.toggle('active')">🎯 开头钩子（3个）</button>
+          <button class="sel-btn" data-type="文案" onclick="this.classList.toggle('active')">📝 正文文案</button>
+          <button class="sel-btn" data-type="标签" onclick="this.classList.toggle('active')">🏷️ 话题标签</button>
+        </div>
+      </div>
+      <button class="ai-btn" onclick="generateCopy()"><span class="icon">✨</span> 生成文案</button>
+      <div id="aiResultArea"></div>
+    `;
+  } else if(aiCurrentTab === "video"){
+    content.innerHTML = `
+      <div class="fg">
+        <label class="fl">上传视频文件</label>
+        <div class="ai-video-upload" id="videoUpload" onclick="document.getElementById('videoFileInput').click()">
+          <div id="uploadHint">
+            <div style="font-size:28px;margin-bottom:6px">📹</div>
+            点击上传视频文件<br>
+            <span style="font-size:11px">支持 mp4 / mov / webm，建议 50MB 以内</span>
+          </div>
+          <input type="file" id="videoFileInput" accept="video/*">
+        </div>
+      </div>
+      <div class="fg">
+        <label class="fl">想让 AI 分析什么？（可选）</label>
+        <textarea class="ai-prompt-input" id="aiPrompt" placeholder="比如：帮我分析视频内容，给出标题和文案建议${v?"。视频主题："+esc(v.title):""}"></textarea>
+      </div>
+      <button class="ai-btn" onclick="analyzeVideo()"><span class="icon">✨</span> 分析视频</button>
+      <div id="aiResultArea"></div>
+    `;
+    // 绑定文件上传
+    setTimeout(()=>{
+      const input = document.getElementById("videoFileInput");
+      if(input){
+        input.onchange = handleVideoUpload;
+      }
+    }, 100);
+  } else if(aiCurrentTab === "describe"){
+    content.innerHTML = `
+      <div class="fg">
+        <label class="fl">用文字描述视频内容</label>
+        <textarea class="ai-prompt-input" id="aiPrompt" style="min-height:100px" placeholder="详细描述视频内容，比如：&#10;这是一个${v?esc(v.title):"口红试色"}视频&#10;画面：近景特写，3个色号依次展示&#10;人物：女生对着镜头说话&#10;氛围：活泼、年轻、时尚">${v?"视频主题："+esc(v.title):""}</textarea>
+      </div>
+      <div class="fg">
+        <label class="fl">需要 AI 做什么</label>
+        <div class="sel-row" id="descTypeRow" style="flex-direction:column;gap:6px">
+          <button class="sel-btn active" data-type="标题文案" onclick="this.classList.toggle('active')">📌 给标题和文案建议</button>
+          <button class="sel-btn" data-type="脚本" onclick="this.classList.toggle('active')">📝 改写成脚本</button>
+          <button class="sel-btn" data-type="优化" onclick="this.classList.toggle('active')">✨ 优化现有内容</button>
+        </div>
+      </div>
+      <button class="ai-btn" onclick="analyzeByDescription()"><span class="icon">✨</span> 生成建议</button>
+      <div id="aiResultArea"></div>
+    `;
+  }
+}
+
+let selectedScriptType = "口播脚本";
+function pickScriptType(el){
+  document.querySelectorAll("#scriptTypeRow .sel-btn").forEach(b=>b.classList.remove("active"));
+  el.classList.add("active");
+  selectedScriptType = el.dataset.type;
+}
+
+function handleVideoUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  
+  if(file.size > 50 * 1024 * 1024){
+    showToast("视频太大，建议 50MB 以内");
+    return;
+  }
+  
+  aiVideoFileName = file.name;
+  const uploadEl = document.getElementById("videoUpload");
+  uploadEl.classList.add("has-file");
+  document.getElementById("uploadHint").innerHTML = `
+    <div style="font-size:24px;margin-bottom:4px">✓</div>
+    <b>${esc(file.name)}</b><br>
+    <span style="font-size:11px">${(file.size/1024/1024).toFixed(1)} MB · 点击重新选择</span>
+  `;
+  
+  // 转 base64
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    aiVideoBase64 = ev.target.result.split(",")[1];
+  };
+  reader.readAsDataURL(file);
+}
+
+// 根据任务类型自动选 AI
+async function callZhipuAPI(messages, model, taskType){
+  // taskType: "script"=写脚本, "copy"=写文案, "video"=视频分析, "image"=图片分析, "chat"=问答
+  
+  if(taskType === "video"){
+    // 视频分析 → 智谱
+    if(state.settings.zhipuKey){
+      return await callZhipuAPIInternal(messages, state.settings.zhipuKey, model);
+    }
+    showToast("视频分析需要智谱 API");
+    return null;
+  }
+  
+  if(taskType === "script"){
+    // 写脚本 → DeepSeek
+    if(state.settings.deepseekKey){
+      return await callDeepSeekAPI(messages, state.settings.deepseekKey);
+    }
+    // 没有 DeepSeek，用智谱
+    if(state.settings.zhipuKey){
+      return await callZhipuAPIInternal(messages, state.settings.zhipuKey, model);
+    }
+    showToast("请配置 DeepSeek 或智谱 API");
+    return null;
+  }
+  
+  if(taskType === "copy"){
+    // 写文案/标题 → 智谱
+    if(state.settings.zhipuKey){
+      return await callZhipuAPIInternal(messages, state.settings.zhipuKey, model);
+    }
+    // 没有智谱，用 DeepSeek
+    if(state.settings.deepseekKey){
+      return await callDeepSeekAPI(messages, state.settings.deepseekKey);
+    }
+    showToast("请配置智谱或 DeepSeek API");
+    return null;
+  }
+  
+  // 默认/问答/图片 → AICodeMirror
+  if(state.settings.aicmKey){
+    return await callAICodeMirrorAPI(messages, state.settings.aicmKey);
+  }
+  // 没有 AICodeMirror，用智谱
+  if(state.settings.zhipuKey){
+    return await callZhipuAPIInternal(messages, state.settings.zhipuKey, model);
+  }
+  showToast("请配置至少一个 AI API");
+  return null;
+}
+
+// 智谱 API
+async function callZhipuAPIInternal(messages, apiKey, model){
+  try{
+    const resp = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: model || "glm-4-flash-250414",
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("智谱 API error:", resp.status, errText);
+      if(resp.status === 401) showToast("智谱 API Key 无效");
+      else showToast("智谱请求失败：" + resp.status);
+      return null;
+    }
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || "（无返回内容）";
+  }catch(e){
+    console.error(e);
+    showToast("网络错误：" + e.message);
+    return null;
+  }
+}
+
+// DeepSeek API
+async function callDeepSeekAPI(messages, apiKey){
+  try{
+    const resp = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: "deepseek-chat",
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("DeepSeek API error:", resp.status, errText);
+      if(resp.status === 401) showToast("DeepSeek API Key 无效");
+      else showToast("DeepSeek请求失败：" + resp.status);
+      return null;
+    }
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || "（无返回内容）";
+  }catch(e){
+    console.error(e);
+    showToast("网络错误：" + e.message);
+    return null;
+  }
+}
+
+// AICodeMirror API
+async function callAICodeMirrorAPI(messages, apiKey){
+  try{
+    const resp = await fetch("https://api.aicodemirror.ai/api/codex/backend-api/codex/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("AICodeMirror API error:", resp.status, errText);
+      if(resp.status === 401) showToast("AICodeMirror API Key 无效");
+      else showToast("AICodeMirror请求失败：" + resp.status);
+      return null;
+    }
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || "（无返回内容）";
+  }catch(e){
+    console.error(e);
+    showToast("网络错误：" + e.message);
+    return null;
+  }
+}
+
+// Claude API (Anthropic)
+async function callClaudeAPI(messages, apiKey){
+  try{
+    // Anthropic messages 格式：system 单独传，其余 user/assistant 交替
+    let systemPrompt = "";
+    const chatMessages = [];
+    for(const m of messages){
+      if(m.role === "system"){
+        systemPrompt += (systemPrompt?"\n":"") + m.content;
+      } else {
+        chatMessages.push({role:m.role, content:m.content});
+      }
+    }
+    
+    const resp = await fetch("https://api.anthropic.com/v1/messages", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "x-api-key": apiKey,
+        "anthropic-version": "2023-06-01",
+        "anthropic-dangerous-direct-browser-access": "true"
+      },
+      body: JSON.stringify({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 2000,
+        system: systemPrompt || undefined,
+        messages: chatMessages
+      })
+    });
+    
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("Claude API error:", resp.status, errText);
+      if(resp.status === 401){
+        showToast("API Key 无效，请检查");
+      } else if(resp.status === 403){
+        showToast("Claude API 需要开启浏览器访问权限");
+      } else {
+        showToast("AI 请求失败：" + resp.status);
+      }
+      return null;
+    }
+    
+    const data = await resp.json();
+    return data.content?.[0]?.text || "（无返回内容）";
+  }catch(e){
+    console.error(e);
+    showToast("网络错误：" + e.message);
+    return null;
+  }
+}
+
+// 调用智谱视频理解 API
+async function callZhipuVideoAPI(videoBase64, prompt){
+  const apiKey = state.settings.zhipuKey || state.settings.apiKey;
+  if(!apiKey){showToast("请先配置智谱 API Key");return null}
+  if(!videoBase64){showToast("请先上传视频");return null}
+  
+  // 视频 base64 需要带 data URL 前缀
+  const videoUrl = "data:video/mp4;base64," + videoBase64;
+  
+  try{
+    const resp = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: "glm-4v-plus-0111",
+        messages: [{
+          role: "user",
+          content: [
+            {type: "video_url", video_url: {url: videoUrl}},
+            {type: "text", text: prompt || "请分析这个视频的内容，并给出标题和文案建议"}
+          ]
+        }],
+        temperature: 0.5,
+        max_tokens: 2000
+      })
+    });
+    
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("Video API error:", resp.status, errText);
+      if(resp.status === 401){showToast("API Key 无效")}
+      else if(resp.status === 413){showToast("视频太大，请压缩后重试")}
+      else{showToast("分析失败：" + resp.status)}
+      return null;
+    }
+    
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || "（无返回内容）";
+  }catch(e){
+    console.error(e);
+    showToast("网络错误：" + e.message);
+    return null;
+  }
+}
+
+// 视频截帧分析（适用于 AICodeMirror/ChatGPT）
+async function analyzeVideoByFrames(videoBase64, prompt){
+  const apiKey = state.settings.apiKey;
+  showToast("正在截取视频画面...");
+  
+  try{
+    // 从视频 base64 提取帧
+    const frames = await extractVideoFrames(videoBase64, 4); // 截4帧
+    if(frames.length === 0){
+      showToast("无法提取视频画面，请用文字描述");
+      return null;
+    }
+    
+    showToast("正在发送给 AI 分析...");
+    
+    // 构建图片消息
+    const content = [];
+    frames.forEach((frame, i)=>{
+      content.push({type:"image_url", image_url:{url:frame}});
+      content.push({type:"text", text:`第${i+1}帧`});
+    });
+    content.push({type:"text", text: prompt || "请根据以上视频截图，分析这个视频在讲什么，并给出标题和文案建议"});
+    
+    const resp = await fetch("https://api.aicodemirror.ai/api/codex/backend-api/codex/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": "Bearer " + apiKey
+      },
+      body: JSON.stringify({
+        model: "gpt-4o-mini",
+        messages: [{role:"user", content:content}],
+        temperature: 0.7,
+        max_tokens: 2000
+      })
+    });
+    
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("Frame analysis error:", resp.status, errText);
+      if(resp.status === 401){showToast("API Key 无效")}
+      else{showToast("分析失败：" + resp.status)}
+      return null;
+    }
+    
+    const data = await resp.json();
+    return data.choices?.[0]?.message?.content || "（无返回内容）";
+  }catch(e){
+    console.error(e);
+    showToast("视频分析失败：" + e.message);
+    return null;
+  }
+}
+
+// 从视频 base64 提取帧
+function extractVideoFrames(videoBase64, count){
+  return new Promise((resolve)=>{
+    const video = document.createElement("video");
+    video.muted = true;
+    video.src = "data:video/mp4;base64," + videoBase64;
+    const frames = [];
+    
+    video.addEventListener("loadeddata", async ()=>{
+      const duration = video.duration;
+      if(!duration || duration < 1){resolve([]);return}
+      
+      const interval = duration / (count + 1);
+      
+      for(let i=1;i<=count;i++){
+        const t = interval * i;
+        const frame = await captureFrame(video, t);
+        if(frame) frames.push(frame);
+      }
+      resolve(frames);
+    });
+    
+    video.addEventListener("error", ()=>{
+      console.error("视频加载失败");
+      resolve([]);
+    });
+    
+    // 超时保护
+    setTimeout(()=>resolve(frames), 10000);
+  });
+}
+
+function captureFrame(video, time){
+  return new Promise((resolve)=>{
+    video.currentTime = time;
+    video.addEventListener("seeked", ()=>{
+      const canvas = document.createElement("canvas");
+      canvas.width = 480; // 缩小图片节省流量
+      canvas.height = canvas.width * (video.videoHeight / video.videoWidth);
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL("image/jpeg", 0.7));
+    }, {once:true});
+  });
+}
+
+function showAILoading(){
+  document.getElementById("aiResultArea").innerHTML = `
+    <div class="ai-loading">
+      <span>AI 正在生成</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  `;
+}
+
+function showAIResult(text){
+  document.getElementById("aiResultArea").innerHTML = `
+    <div style="margin-top:14px">
+      <label class="fl">✨ 生成结果</label>
+      <div class="ai-result">${esc(text)}</div>
+      <div class="ai-gen-actions">
+        <button class="ai-gen-btn secondary" onclick="copyAIResult(${JSON.stringify(text).replace(/"/g,'&quot;')})">📋 复制</button>
+        <button class="ai-gen-btn primary" onclick="appendToNote(${JSON.stringify(text).replace(/"/g,'&quot;')})">📝 写入备注</button>
+      </div>
+    </div>
+  `;
+}
+
+function copyAIResult(text){
+  // 创建临时 textarea 复制
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try{
+    document.execCommand("copy");
+    showToast("已复制到剪贴板");
+  }catch(e){
+    showToast("复制失败，请手动选择复制");
+  }
+  document.body.removeChild(ta);
+}
+
+function appendToNote(text){
+  const noteEl = document.getElementById("vNote");
+  if(noteEl){
+    const existing = noteEl.value.trim();
+    noteEl.value = existing ? existing + "\n\n--- AI 生成 ---\n" + text : text;
+    showToast("已写入备注");
+  } else {
+    // 如果备注框不在（AI 助手是独立打开的），存到剪贴板
+    copyAIResult(text);
+  }
+}
+
+// 生成脚本
+async function generateScript(){
+  const prompt = document.getElementById("aiPrompt").value.trim();
+  if(!prompt){showToast("请输入视频主题");return}
+  
+  showAILoading();
+  const result = await callZhipuAPI([
+    {role:"system", content:"你是一位专业的短视频脚本编剧，擅长写有吸引力、节奏感强的视频脚本。请用 Markdown 格式输出，包含：开头钩子、正文、结尾引导。语言要口语化、有网感。"},
+    {role:"user", content:`请为以下内容写一个${selectedScriptType}：\n\n${prompt}\n\n要求：\n- 适合竖屏短视频（15-60秒）\n- 开头 3 秒要有强钩子\n- 语言口语化，像真人说话\n- 结尾有互动引导（点赞/关注/评论）`}
+  ], null, "script");
+  
+  if(result) showAIResult(result);
+}
+
+// 生成文案
+async function generateCopy(){
+  const prompt = document.getElementById("aiPrompt").value.trim();
+  if(!prompt){showToast("请描述视频内容");return}
+  
+  const types = [];
+  document.querySelectorAll("#copyTypeRow .sel-btn.active").forEach(b=>types.push(b.dataset.type));
+  if(types.length === 0){showToast("至少选一种文案类型");return}
+  
+  showAILoading();
+  const typeStr = types.join("、");
+  const result = await callZhipuAPI([
+    {role:"system", content:"你是一位资深社交媒体运营，擅长写有传播力的视频文案。了解视频号、抖音、小红书、B站各平台的调性。请用 Markdown 格式输出，条理清晰。"},
+    {role:"user", content:`视频内容：${prompt}\n\n请生成以下内容：${typeStr}\n\n要求：\n- 标题要有吸引力，让人想点开\n- 开头钩子要能在 1 秒内抓住注意力\n- 文案口语化，有网感\n- 标签要结合热点和长尾词\n- 如果是多平台，可分别给建议`}
+  ], null, "copy");
+  
+  if(result) showAIResult(result);
+}
+
+// 分析视频（上传文件）
+async function analyzeVideo(){
+  if(!aiVideoBase64){showToast("请先上传视频文件");return}
+  
+  const prompt = document.getElementById("aiPrompt").value.trim() || "请分析这个视频的内容，并给出标题和文案建议";
+  
+  showAILoading();
+  document.querySelector(".ai-loading span").textContent = "AI 正在分析视频";
+  
+  const result = await callZhipuVideoAPI(aiVideoBase64, prompt);
+  
+  if(result) showAIResult(result);
+}
+
+// 描述分析
+async function analyzeByDescription(){
+  const prompt = document.getElementById("aiPrompt").value.trim();
+  if(!prompt){showToast("请描述视频内容");return}
+  
+  const types = [];
+  document.querySelectorAll("#descTypeRow .sel-btn.active").forEach(b=>types.push(b.dataset.type));
+  if(types.length === 0){showToast("至少选一个需求");return}
+  
+  showAILoading();
+  const result = await callZhipuAPI([
+    {role:"system", content:"你是一位专业的短视频运营顾问，擅长根据视频内容描述给出标题、文案和脚本建议。请用 Markdown 格式输出。"},
+    {role:"user", content:`用户描述的视频内容：\n${prompt}\n\n需求：${types.join("、")}\n\n请基于描述给出专业建议。如果描述信息不足，可以基于常见场景合理推测，但要标注"（推测）"。`}
+  ], null, "copy");
+  
+  if(result) showAIResult(result);
+}
+
+function editSetting(key,label,type){
+  const cur = state.settings[key];
+  document.getElementById("modalTitle").textContent = label;
+  document.getElementById("modalBody").innerHTML = `
+    <div class="fg"><label class="fl">${label}</label><input class="fi" id="settingVal" type="${type}" value="${cur}"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal();openSettings()">取消</button>
+      <button class="btn btn-primary" onclick="saveSetting('${key}')">保存</button>
+    </div>
+  `;
+  setTimeout(()=>document.getElementById("settingVal")?.focus(),300);
+}
+
+function saveSetting(key){
+  const val = parseInt(document.getElementById("settingVal").value);
+  if(isNaN(val)||val<0){showToast("请输入有效数字");return}
+  state.settings[key] = val;
+  save();
+  closeModal();
+  openSettings();
+  render();
+  showToast("已保存");
+}
+
+let deferredPrompt = null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e});
+function installApp(){
+  if(deferredPrompt){
+    deferredPrompt.prompt();
+    deferredPrompt.userChoice.then(()=>{deferredPrompt=null;closeModal()});
+  } else {
+    const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent);
+    alert(isIOS 
+      ? "iOS 安装：\n\n1. 点击 Safari 底部分享按钮 📤\n2. 选择「添加到主屏幕」\n3. 点击「添加」"
+      : "安装方法：\n\n浏览器菜单 →「添加到主屏幕」或「安装应用」");
+  }
+}
+
+function exportData(){
+  const data = JSON.stringify(state,null,2);
+  const blob = new Blob([data],{type:"application/json"});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href=url;a.download=`video-ops-backup-${todayStr()}.json`;a.click();
+  URL.revokeObjectURL(url);
+  showToast("已导出备份");
+}
+
+function importData(){
+  const input = document.createElement("input");
+  input.type="file";input.accept=".json,application/json";
+  input.onchange = e=>{
+    const f = e.target.files[0];if(!f)return;
+    const r = new FileReader();
+    r.onload = ev=>{
+      try{
+        const d = JSON.parse(ev.target.result);
+        if(d.clients && d.videos){
+          state = {...state,...d,settings:{...state.settings,...(d.settings||{})}};
+          save();render();closeModal();showToast("导入成功");
+        } else {showToast("文件格式不正确")}
+      }catch(err){showToast("导入失败")}
+    };
+    r.readAsText(f);
+  };
+  input.click();
+}
+
+function resetData(){
+  if(!confirm("确认清空所有数据？此操作不可撤销！"))return;
+  if(!confirm("再次确认：所有客户和视频将被删除！"))return;
+  state = {clients:[],videos:[],settings:state.settings};
+  save();closeModal();switchPage("home");showToast("已清空");
+}
+
+// ============================================================
+// 工具
+// ============================================================
+function showModal(){document.getElementById("overlay").classList.add("show")}
+function closeModal(){document.getElementById("overlay").classList.remove("show")}
+function onOverlayClick(e){if(e.target.id==="overlay")closeModal()}
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>t.classList.remove("show"),2000);
+}
+function esc(s){if(!s)return"";return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;")}
+
+// ============================================================
+// 可视化看板
+// ============================================================
+function dashGetMonthDate(){
+  const d = new Date();
+  return new Date(d.getFullYear(), d.getMonth()+dashMonthOffset, 1);
+}
+function dashMonthLabel(){
+  const d = dashGetMonthDate();
+  return `${d.getFullYear()}年${d.getMonth()+1}月`;
+}
+function dashIsInMonth(s){
+  if(!s) return false;
+  const d = new Date(s+"T00:00:00");
+  const m = dashGetMonthDate();
+  return d.getFullYear()===m.getFullYear() && d.getMonth()===m.getMonth();
+}
+function dashChangeMonth(delta){
+  dashMonthOffset += delta;
+  renderDashboard();
+}
+function dashGoThisMonth(){
+  dashMonthOffset = 0;
+  renderDashboard();
+}
+
+// 统计某渠道在某月已发布数
+function dashChannelPublished(clientId, channelId, monthDate){
+  return state.videos.filter(v=>{
+    if(v.clientId !== clientId) return false;
+    const cs = v.channelStates?.[channelId];
+    if(!cs || !cs.selected || !cs.published) return false;
+    const pd = cs.publishDate || v.scheduledDate || "";
+    if(!pd) return false;
+    const d = new Date(pd+"T00:00:00");
+    return d.getFullYear()===monthDate.getFullYear() && d.getMonth()===monthDate.getMonth();
+  }).length;
+}
+
+// 统计某客户在某月已发布条数(按视频计，一条视频只要有一个渠道发了就算)
+function dashClientMonthPublished(cid, monthDate){
+  return state.videos.filter(v=>{
+    if(v.clientId !== cid) return false;
+    return Object.entries(v.channelStates||{}).some(([id,s])=>{
+      if(!s.selected || !s.published) return false;
+      const pd = s.publishDate || v.scheduledDate || "";
+      if(!pd) return false;
+      const d = new Date(pd+"T00:00:00");
+      return d.getFullYear()===monthDate.getFullYear() && d.getMonth()===monthDate.getMonth();
+    });
+  }).length;
+}
+
+function renderDashboard(){
+  const monthEl = document.getElementById("dashMonth");
+  if(monthEl) monthEl.textContent = dashMonthLabel();
+  const isCurMonth = dashMonthOffset === 0;
+  const monthDate = dashGetMonthDate();
+  const target = state.settings.monthlyTarget || 15;
+
+  // —— 总览 ——
+  const overview = document.getElementById("dashOverview");
+  if(overview){
+    const totalClients = state.clients.length;
+    const totalPublished = state.clients.reduce((sum,c)=>sum + dashClientMonthPublished(c.id, monthDate), 0);
+    const totalTarget = totalClients * target;
+    const remain = Math.max(0, totalTarget - totalPublished);
+    const pct = totalTarget > 0 ? Math.min(100, Math.round(totalPublished/totalTarget*100)) : 0;
+    overview.innerHTML = `
+      <div class="dash-overview-inner">
+        <div class="dash-stat ok"><div class="num">${totalPublished}</div><div class="lbl">本月已发</div></div>
+        <div class="dash-stat"><div class="num">${totalTarget}</div><div class="lbl">月度目标</div></div>
+        <div class="dash-stat warn"><div class="num">${remain}</div><div class="lbl">剩余待发</div></div>
+      </div>
+      <div style="margin-top:12px;display:flex;align-items:center;gap:8px">
+        <div class="dash-pbar-wrap" style="flex:1;margin:0">
+          <div class="dash-pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,#4f7cff,#7b5cff)"></div>
+        </div>
+        <span style="font-size:12px;font-weight:700;color:#5a3e2b;min-width:36px;text-align:right">${pct}%</span>
+      </div>
+    `;
+  }
+
+  // —— 每客户卡片 ——
+  const clientsEl = document.getElementById("dashClients");
+  if(!clientsEl) return;
+  if(state.clients.length === 0){
+    clientsEl.innerHTML = `<div class="dash-empty">还没有客户数据<br>先去「客户」页添加客户吧</div>`;
+    return;
+  }
+
+  clientsEl.innerHTML = state.clients.map(c=>{
+    const color = c.color || "#4f7cff";
+    const monthPub = dashClientMonthPublished(c.id, monthDate);
+    const remain = Math.max(0, target - monthPub);
+    const pct = target > 0 ? Math.min(100, Math.round(monthPub/target*100)) : 0;
+    const badgeCls = pct >= 100 ? "done" : (remain <= 3 ? "short" : "");
+    const badgeText = pct >= 100 ? "已达标" : `差${remain}条`;
+
+    // 渠道明细
+    const channelRows = (c.channels||[]).map(ch=>{
+      const cnt = dashChannelPublished(c.id, ch.id, monthDate);
+      const barPct = target > 0 ? Math.min(100, cnt/target*100) : 0;
+      return `<div class="dash-channel-row">
+        <span class="dash-ch-name">${esc(ch.name)}</span>
+        <span class="dash-ch-bar-wrap"><span class="dash-ch-bar" style="width:${barPct}%;background:${color}"></span></span>
+        <span class="dash-ch-cnt">${cnt}</span>
+      </div>`;
+    }).join("");
+
+    // 本月视频表格：包含本月排期的所有视频 + 本月已发布的视频
+    const monthVideos = clientVideos(c.id).filter(v=>{
+      // 有排期日期在本月
+      if(v.scheduledDate && dashIsInMonth(v.scheduledDate)) return true;
+      // 有任一渠道在本月发布
+      return Object.entries(v.channelStates||{}).some(([id,s])=>{
+        if(!s.selected || !s.published) return false;
+        const pd = s.publishDate || v.scheduledDate || "";
+        return pd && dashIsInMonth(pd);
+      });
+    }).sort((a,b)=>{
+      const da = a.scheduledDate || Object.values(a.channelStates||{}).find(s=>s.publishDate)?.publishDate || "9999";
+      const db = b.scheduledDate || Object.values(b.channelStates||{}).find(s=>s.publishDate)?.publishDate || "9999";
+      return (da||"").localeCompare(db||"");
+    });
+
+    let tableHtml = "";
+    if(monthVideos.length > 0){
+      const rows = monthVideos.map(v=>{
+        const dateStr = v.scheduledDate || Object.values(v.channelStates||{}).find(s=>s.publishDate)?.publishDate || "";
+        const dateDisp = dateStr ? `${parseInt(dateStr.split('-')[1])}/${parseInt(dateStr.split('-')[2])}` : "未排期";
+        // 渠道状态标签
+        const chips = Object.entries(v.channelStates||{})
+          .filter(([id,s])=>s.selected)
+          .map(([id,s])=>{
+            const chName = getChannelName(c.id, id);
+            if(s.published){
+              return `<span class="dash-chip pub">${esc(chName)}✓</span>`;
+            }
+            return `<span class="dash-chip pend">${esc(chName)}…</span>`;
+          }).join("");
+        const unselectedChips = (c.channels||[])
+          .filter(ch=>!v.channelStates?.[ch.id]?.selected)
+          .map(ch=>`<span class="dash-chip no">${esc(ch.name)}</span>`).join("");
+        // 状态标识
+        const stMap = {pending:"待发",published:"已发",final:"定稿",editing:"修改中"};
+        const stColor = v.status==="published" ? "var(--green)" : (v.status==="pending" ? "#e8950a" : "var(--t2)");
+        return `<tr>
+          <td class="col-date">${dateDisp}</td>
+          <td class="col-title">${esc(v.title)}</td>
+          <td class="col-channels">${chips}${unselectedChips}</td>
+          <td class="col-status" style="color:${stColor};font-weight:600;white-space:nowrap">${stMap[v.status]||v.status}</td>
+        </tr>`;
+      }).join("");
+      tableHtml = `
+        <div class="dash-table-h">发布明细 <span class="cnt">${monthVideos.length}条</span></div>
+        <div class="dash-table-scroll">
+        <table class="dash-table">
+          <thead><tr><th>日期</th><th>视频</th><th>渠道</th><th>状态</th></tr></thead>
+          <tbody>${rows}</tbody>
+        </table>
+        </div>
+      `;
+    } else {
+      tableHtml = `<div class="dash-empty" style="padding:16px">本月暂无发布记录</div>`;
+    }
+
+    return `<div class="dash-client-card">
+      <div class="dash-client-head">
+        <span class="dash-client-dot" style="background:${color}"></span>
+        <span class="dash-client-name">${esc(c.name)}</span>
+        <span class="dash-client-badge ${badgeCls}">${badgeText}</span>
+      </div>
+      <div class="dash-pbar-wrap">
+        <div class="dash-pbar-fill" style="width:${pct}%;background:linear-gradient(90deg,${color},${color}cc)"></div>
+      </div>
+      <div class="dash-client-stats">
+        <div class="dash-cs-item"><div class="dash-cs-num" style="color:${color}">${monthPub}</div><div class="dash-cs-lbl">已发</div></div>
+        <div class="dash-cs-item"><div class="dash-cs-num">${target}</div><div class="dash-cs-lbl">目标</div></div>
+        <div class="dash-cs-item"><div class="dash-cs-num">${remain}</div><div class="dash-cs-lbl">剩余</div></div>
+        <div class="dash-cs-item"><div class="dash-cs-num">${pct}%</div><div class="dash-cs-lbl">进度</div></div>
+      </div>
+      ${channelRows ? `<div style="margin-top:4px"><div class="dash-table-h" style="margin-top:0">渠道分布</div>${channelRows}</div>` : ""}
+      ${tableHtml}
+    </div>`;
+  }).join("");
+}
+
+
+function render(){
+  renderHome();
+  renderClients();
+  renderClientDetail();
+  renderCalendar();
+  renderDashboard();
+}
+
+// ============================================================
+// 初始化
+// ============================================================
+load();
+// 首页 headerSub 显示日期
+const n = new Date();
+const dows = ["周日","周一","周二","周三","周四","周五","周六"];
+document.getElementById("headerSub").textContent = `${n.getFullYear()}/${n.getMonth()+1}/${n.getDate()} ${dows[n.getDay()]}`;
+render();
+
+if("serviceWorker" in navigator){
+  navigator.serviceWorker.register("sw.js").catch(e=>console.error(e));
+}
+
+let lastTouch=0;
+document.addEventListener("touchend",e=>{
+  const now=Date.now();
+  if(now-lastTouch<300)e.preventDefault();
+  lastTouch=now;
+},{passive:false});
+</script>
+</body>
+</html>
