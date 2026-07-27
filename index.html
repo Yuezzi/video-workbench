@@ -195,8 +195,10 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .btn-success{background:var(--success);color:#fff}
 
 /* Toast */
-.toast{position:fixed;top:calc(16px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-100px);background:rgba(90,62,43,0.9);backdrop-filter:blur(20px);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:500;z-index:200;transition:transform .3s cubic-bezier(.32,.72,0,1);white-space:nowrap}
+.toast{position:fixed;top:calc(16px + var(--safe-top));left:50%;transform:translateX(-50%) translateY(-100px);background:rgba(90,62,43,0.9);backdrop-filter:blur(20px);color:#fff;padding:10px 20px;border-radius:20px;font-size:14px;font-weight:500;z-index:200;transition:transform .3s cubic-bezier(.32,.72,0,1);white-space:nowrap;display:flex;align-items:center;gap:10px}
 .toast.show{transform:translateX(-50%) translateY(0)}
+.toast .undo-btn{background:rgba(255,255,255,0.25);color:#fff;border:none;padding:4px 14px;border-radius:14px;font-size:13px;font-weight:700;cursor:pointer;-webkit-tap-highlight-color:transparent}
+.toast .undo-btn:active{background:rgba(255,255,255,0.4)}
 
 /* Page */
 .page{display:none}.page.active{display:block}
@@ -1791,7 +1793,16 @@ function simulateAutoSchedule(){
   return {scheduled, unscheduled:failedToSchedule};
 }
 
+// 排期前的快照，用于撤销
+let autoScheduleSnapshot = null;
+
 function confirmAutoSchedule(){
+  // 保存排期前的状态快照
+  autoScheduleSnapshot = JSON.parse(JSON.stringify({
+    videos: state.videos,
+    clients: state.clients
+  }));
+  
   const result = simulateAutoSchedule();
   
   // 实际写入排期
@@ -1812,11 +1823,44 @@ function confirmAutoSchedule(){
   render();
   closeAutoSchedule();
   
-  if(result.unscheduled.length > 0){
-    showToast(`已排 ${result.scheduled.length} 个，${result.unscheduled.length} 个未排上`);
-  } else {
-    showToast(`已排 ${result.scheduled.length} 个视频 🎉`);
+  const msg = result.unscheduled.length > 0
+    ? `已排 ${result.scheduled.length} 个，${result.unscheduled.length} 个未排上`
+    : `已排 ${result.scheduled.length} 个视频 🎉`;
+  showToast(msg + ' · 点撤销可还原');
+  
+  // 3 秒内显示撤销按钮
+  showUndoToast(msg);
+}
+
+function showUndoToast(msg){
+  const toast = document.getElementById("toast");
+  toast.innerHTML = `<span>${msg}</span> <button class="undo-btn" onclick="undoAutoSchedule()">撤销</button>`;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(()=>{
+    toast.classList.remove("show");
+    toast.innerHTML = "";
+    autoScheduleSnapshot = null;
+  }, 5000);
+}
+
+function undoAutoSchedule(){
+  if(!autoScheduleSnapshot){
+    showToast("已无法撤销");
+    return;
   }
+  state.videos = autoScheduleSnapshot.videos;
+  state.clients = autoScheduleSnapshot.clients;
+  save();
+  render();
+  autoScheduleSnapshot = null;
+  
+  // 关闭 toast
+  const toast = document.getElementById("toast");
+  toast.classList.remove("show");
+  toast.innerHTML = "";
+  
+  showToast("已撤销排期 ✓");
 }
 
 // ============================================================
