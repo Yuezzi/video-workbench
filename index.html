@@ -725,6 +725,8 @@ function load(){
           delete v.platforms;
           delete v.publishDates;
         }
+        // 兼容旧数据：final 状态统一转成 pending
+        if(v.status === "final") v.status = "pending";
       });
     } else {
       seedDemo();
@@ -829,6 +831,8 @@ function cloudPull(callback){
               });
             }
           }
+          // 兼容旧数据：final 状态统一转成 pending
+          if(v.status === "final") v.status = "pending";
         });
         localStorage.setItem(SK, JSON.stringify(state));
         render();
@@ -920,15 +924,15 @@ function seedDemo(){
 
   state.videos = [
     {id:uid(), clientId:c1, title:"夏季新品口红试色", status:"editing", scheduledDate:"", channelStates:cs(c1,{}), note:"客户要求加产品特写", createdAt:Date.now()},
-    {id:uid(), clientId:c1, title:"618促销预告", status:"final", scheduledDate:"", channelStates:cs(c1,{}), note:"", createdAt:Date.now()},
+    {id:uid(), clientId:c1, title:"618促销预告", status:"pending", scheduledDate:"", channelStates:cs(c1,{}), note:"", createdAt:Date.now()},
     {id:uid(), clientId:c1, title:"品牌故事长视频", status:"pending", scheduledDate:addDays(1), channelStates:cs(c1,{"视频号":"done","抖音":"done","小红书":"done","B站":"pending"}), note:"", createdAt:Date.now()},
     {id:uid(), clientId:c1, title:"618大促战报", status:"published", scheduledDate:addDays(-2), channelStates:cs(c1,{"视频号":"done","抖音":"done","小红书":"done","B站":"done"}), note:"", createdAt:Date.now()},
     
-    {id:uid(), clientId:c2, title:"新品菜单试吃", status:"final", scheduledDate:"", channelStates:cs(c2,{}), note:"", createdAt:Date.now()},
+    {id:uid(), clientId:c2, title:"新品菜单试吃", status:"pending", scheduledDate:"", channelStates:cs(c2,{}), note:"", createdAt:Date.now()},
     {id:uid(), clientId:c2, title:"周末探店vlog", status:"pending", scheduledDate:addDays(3), channelStates:cs(c2,{"视频号":"pending","抖音":"pending","小红书":"pending","B站":"pending"}), note:"", createdAt:Date.now()},
     
     {id:uid(), clientId:c3, title:"健身教程-核心训练", status:"editing", scheduledDate:"", channelStates:cs(c3,{}), note:"等剪辑加字幕", createdAt:Date.now()},
-    {id:uid(), clientId:c3, title:"私教课推广", status:"final", scheduledDate:"", channelStates:cs(c3,{"工作视频号":"pending","工作抖音":"pending","小红书":"pending"}), note:"只发工作号，不发生活号", createdAt:Date.now()},
+    {id:uid(), clientId:c3, title:"私教课推广", status:"pending", scheduledDate:"", channelStates:cs(c3,{"工作视频号":"pending","工作抖音":"pending","小红书":"pending"}), note:"只发工作号，不发生活号", createdAt:Date.now()},
   ];
   save();
 }
@@ -1298,7 +1302,6 @@ function renderClientDetail(){
 function videoCardHTML(v){
   const statusMap = {
     editing:["s-editing","修改中","✏"],
-    final:["s-final","已定稿","✓"],
     pending:["s-pending","待发布","▶"],
     published:["s-published","已发完","✓"]
   };
@@ -1452,7 +1455,7 @@ function renderVideoSidebar(){
     return;
   }
   
-  let html = `<div class="sidebar-hint">💡 <b>定稿</b>视频可拖到日历</div>`;
+  let html = `<div class="sidebar-hint">💡 <b>待发布</b>视频可拖到日历</div>`;
   
   state.clients.forEach(c=>{
     const vids = state.videos.filter(v=>v.clientId===c.id && v.status!=="published");
@@ -1466,7 +1469,7 @@ function renderVideoSidebar(){
       const chNames = selChs.length > 0 ? selChs.map(s=>s.name).join(" · ") : "未选渠道";
       const stMap = {editing:["st-editing","改"],final:["st-final","稿"],pending:["st-pending","待"]};
       const[stCls,stTxt] = stMap[v.status] || ["st-editing","改"];
-      const draggable = v.status === "final" || v.status === "pending";
+      const draggable = v.status === "pending";
       const chipCls = v.status === "editing" ? "editing" : (v.status === "pending" ? "pending" : "ready");
       
       html += `<div class="video-chip ${chipCls}" ${draggable?`draggable="true" ondragstart="onDragStart(event,'${v.id}')" ontouchstart="onTouchStartChip(event,'${v.id}')" ontouchmove="onTouchMoveChip(event)" ontouchend="onTouchEndChip(event)"`:""}>
@@ -1482,7 +1485,7 @@ function renderVideoSidebar(){
     html += `</div>`;
   });
   
-  if(html === `<div class="sidebar-hint">💡 <b>定稿</b>视频可拖到日历</div>`){
+  if(html === `<div class="sidebar-hint">💡 <b>待发布</b>视频可拖到日历</div>`){
     html += `<div style="font-size:12px;color:var(--t3);text-align:center;padding:16px">所有视频都已发布 🎉</div>`;
   }
   
@@ -1596,7 +1599,6 @@ function doSchedule(videoId, date){
   if(!v) return;
   
   v.scheduledDate = date;
-  if(v.status === "final") v.status = "pending";
   
   const selChs = videoSelectedChannels(v);
   selChs.forEach(s=>{
@@ -1614,8 +1616,8 @@ function doSchedule(videoId, date){
 // 未排期提醒
 function renderUnscheduledAlert(){
   const alert = document.getElementById("unscheduledAlert");
-  // 找出所有定稿/待发布但没有排期日期的视频
-  const unscheduled = state.videos.filter(v=>!v.scheduledDate && (v.status==="final" || v.status==="pending"));
+  // 找出所有待发布但没有排期日期的视频
+  const unscheduled = state.videos.filter(v=>!v.scheduledDate && v.status==="pending");
   // 也找出有选中渠道但没有 publishDate 的
   const unschedChannels = [];
   state.videos.forEach(v=>{
@@ -1661,8 +1663,8 @@ function renderUnscheduledAlert(){
 // 自动排期 — 同客户同渠道不连续两天规则
 // ============================================================
 function openAutoSchedule(){
-  // 找出所有需要排期的视频（定稿/待发布但没有排期日期）
-  const unscheduled = state.videos.filter(v=>!v.scheduledDate && (v.status==="final" || v.status==="pending"));
+  // 找出所有需要排期的视频（待发布但没有排期日期）
+  const unscheduled = state.videos.filter(v=>!v.scheduledDate && v.status==="pending");
   if(unscheduled.length === 0){
     showToast("没有需要排期的视频");
     return;
@@ -1709,7 +1711,7 @@ function onAutoOverlay(e){
 
 // 模拟排期（不实际修改数据）
 function simulateAutoSchedule(){
-  const unsched = state.videos.filter(v=>!v.scheduledDate && (v.status==="final" || v.status==="pending"));
+  const unsched = state.videos.filter(v=>!v.scheduledDate && v.status==="pending");
   const today = new Date();
   today.setHours(0,0,0,0);
   
@@ -1797,7 +1799,6 @@ function confirmAutoSchedule(){
     const v = state.videos.find(x=>x.id===s.videoId);
     if(v){
       v.scheduledDate = s.ds;
-      if(v.status === "final") v.status = "pending";
       // 给未设日期的渠道也设上
       Object.entries(v.channelStates||{}).forEach(([cid,st])=>{
         if(st.selected && !st.publishDate){
@@ -2013,7 +2014,6 @@ function openVideoModal(id){
   
   const statusBtns = [
     {k:"editing",t:"修改中"},
-    {k:"final",t:"已定稿"},
     {k:"pending",t:"待发布"},
     {k:"published",t:"已发完"}
   ].map(s=>`<button class="sel-btn ${v.status===s.k?"active":""}" data-status="${s.k}" onclick="pickStatus(this)">${s.t}</button>`).join("");
@@ -2050,7 +2050,7 @@ function openVideoModal(id){
         <textarea class="ft" id="vNote" placeholder="客户要求、修改意见等..." style="min-height:50px"></textarea>
       </div>
       <div style="font-size:12px;color:var(--t3);padding:8px;background:rgba(255,255,255,0.3);border-radius:10px;margin-bottom:10px">
-        💡 新视频默认「修改中」状态，渠道默认全部勾选。<br>定稿后到日历页拖拽排期。
+        💡 新视频默认「修改中」状态，渠道默认全部勾选。<br>改为待发布后到日历页拖拽排期。
       </div>
       <button class="ai-btn" onclick="openAIAssistant('')">
         <span class="icon">✨</span> AI 助手 · 写脚本 / 写文案 / 分析视频
@@ -3276,7 +3276,7 @@ function renderDashboard(){
           .filter(ch=>!v.channelStates?.[ch.id]?.selected)
           .map(ch=>`<span class="dash-chip no">${esc(ch.name)}</span>`).join("");
         // 状态标识
-        const stMap = {pending:"待发",published:"已发",final:"定稿",editing:"修改中"};
+        const stMap = {pending:"待发",published:"已发",editing:"修改中"};
         const stColor = v.status==="published" ? "var(--green)" : (v.status==="pending" ? "#e8950a" : "var(--t2)");
         return `<tr>
           <td class="col-date">${dateDisp}</td>
