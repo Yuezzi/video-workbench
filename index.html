@@ -2481,6 +2481,7 @@ let aiFlowVideoId = null;
 let aiFlowBase64 = null;
 let aiFlowFileName = "";
 let aiFlowResultData = null;
+let aiFlowMimeType = "";
 
 // ============================================================
 // AI 一键生成工作流
@@ -2490,6 +2491,7 @@ function openAIGenerateFlow(videoId){
   aiFlowBase64 = null;
   aiFlowFileName = "";
   aiFlowResultData = null;
+  aiFlowMimeType = "";
 
   // 检查密钥
   if(!state.settings.zhipuKey || !state.settings.deepseekKey){
@@ -2549,12 +2551,14 @@ function handleAIFlowVideoUpload(e){
     return;
   }
   aiFlowFileName = file.name;
+  aiFlowMimeType = file.type || "video/mp4";
   const uploadEl = document.getElementById("aiFlowUpload");
   uploadEl.classList.add("has-file");
+  const fmtBadge = aiFlowMimeType.includes("mp4") ? "" : ` · ${aiFlowMimeType.split("/")[1]||"mov"}将自动转换`;
   document.getElementById("aiFlowUploadHint").innerHTML = `
     <div style="font-size:24px;margin-bottom:4px">✓</div>
     <b>${esc(file.name)}</b><br>
-    <span style="font-size:11px">${(file.size/1024/1024).toFixed(1)} MB · 点击重新选择</span>
+    <span style="font-size:11px">${(file.size/1024/1024).toFixed(1)} MB${fmtBadge}</span>
   `;
   const reader = new FileReader();
   reader.onload = (ev)=>{
@@ -2614,7 +2618,7 @@ async function runAIGenerateFlow(){
 5. 情绪点：（最能打动人的一句话或一个瞬间）
 每项1-2句话，不要啰嗦。`;
 
-  const analysisResult = await callZhipuVideoAPI(aiFlowBase64, analysisPrompt);
+  const analysisResult = await callZhipuVideoAPI(aiFlowBase64, analysisPrompt, aiFlowMimeType);
 
   if(!analysisResult){
     showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">视频分析失败，请检查智谱密钥或视频大小</div>`);
@@ -2667,7 +2671,21 @@ ${analysisResult}
   // 解析 JSON 结果
   const parsed = parseCopyResult(copyResult);
   if(!parsed){
-    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">文案格式解析失败</div>`);
+    // 解析失败，显示原始输出让用户看到
+    showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--danger);font-size:13px;font-weight:600">文案格式解析失败</div>`);
+    showFlowResult(`
+      <div style="margin-top:10px">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:6px">DeepSeek 原始输出（你可以手动复制）：</div>
+        <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:13px;color:var(--t3);line-height:1.6;white-space:pre-wrap;max-height:300px;overflow-y:auto">${esc(copyResult)}</div>
+        <button class="ai-gen-btn secondary" style="margin-top:8px" onclick="copyText('${esc(copyResult).replace(/'/g,"\\'")}')">📋 复制全部</button>
+      </div>
+    `);
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="runAIGenerateFlow()">🔄 重新生成</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+      </div>
+    `);
     if(startBtn) startBtn.style.display = "";
     return;
   }
@@ -2712,30 +2730,48 @@ ${analysisResult}
 function parseCopyResult(text){
   if(!text) return null;
   try{
-    // 尝试直接解析 JSON
     let cleaned = text.trim();
     // 去掉 markdown 代码块
-    if(cleaned.startsWith("```")){
-      cleaned = cleaned.replace(/^```(?:json)?\n?/,"").replace(/\n?```$/,"");
-    }
-    // 尝试找到 JSON 对象
-    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
-    if(jsonMatch){
-      const obj = JSON.parse(jsonMatch[0]);
-      if(obj.shortTitle && obj.shortBody && obj.longTitle && obj.longBody){
-        return obj;
+    cleaned = cleaned.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
+    // 尝试找到 JSON 对象（从第一个 { 到最后一个 }）
+    const start = cleaned.indexOf("{");
+    const end = cleaned.lastIndexOf("}");
+    if(start >= 0 && end > start){
+      const jsonStr = cleaned.substring(start, end + 1);
+      const obj = JSON.parse(jsonStr);
+      if(obj.shortTitle !== undefined && obj.shortBody !== undefined && obj.longTitle !== undefined && obj.longBody !== undefined){
+        return {
+          shortTitle: String(obj.shortTitle || ""),
+          shortBody: String(obj.shortBody || ""),
+          longTitle: String(obj.longTitle || ""),
+          longBody: String(obj.longBody || "")
+        };
       }
     }
     // 直接解析
     const obj = JSON.parse(cleaned);
-    if(obj.shortTitle && obj.shortBody && obj.longTitle && obj.longBody){
-      return obj;
+    if(obj.shortTitle !== undefined && obj.shortBody !== undefined && obj.longTitle !== undefined && obj.longBody !== undefined){
+      return {
+        shortTitle: String(obj.shortTitle || ""),
+        shortBody: String(obj.shortBody || ""),
+        longTitle: String(obj.longTitle || ""),
+        longBody: String(obj.longBody || "")
+      };
     }
     return null;
   }catch(e){
-    console.error("parseCopyResult error:", e);
+    console.error("parseCopyResult error:", e, "raw:", text.substring(0, 200));
     return null;
   }
+}
+
+function copyText(text){
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); showToast("已复制"); }catch(e){ showToast("复制失败"); }
+  document.body.removeChild(ta);
 }
 
 function copyFlowText(type){
@@ -3133,13 +3169,96 @@ async function callClaudeAPI(messages, apiKey){
 }
 
 // 调用智谱视频理解 API
-async function callZhipuVideoAPI(videoBase64, prompt){
+// 视频格式转换：将 mov/其他格式转为 mp4 base64
+async function convertToMp4(videoBase64, mimeType){
+  return new Promise((resolve)=>{
+    // 如果已经是 mp4，直接返回
+    if(mimeType && mimeType.includes("mp4")){
+      resolve(videoBase64);
+      return;
+    }
+    // 尝试用 video+canvas 截取关键帧作为图片传给智谱
+    const video = document.createElement("video");
+    video.muted = true;
+    video.src = "data:" + (mimeType || "video/mp4") + ";base64," + videoBase64;
+    video.crossOrigin = "anonymous";
+    
+    let frames = [];
+    let done = false;
+    
+    const finish = (result)=>{
+      if(done) return;
+      done = true;
+      resolve(result);
+    };
+    
+    video.addEventListener("loadeddata", async ()=>{
+      const duration = video.duration;
+      if(!duration || duration < 1){
+        finish(null);
+        return;
+      }
+      // 截取4帧关键画面
+      const interval = duration / 5;
+      for(let i=1; i<=4; i++){
+        const t = interval * i;
+        try{
+          const frame = await new Promise((res)=>{
+            video.currentTime = t;
+            video.addEventListener("seeked", ()=>{
+              const canvas = document.createElement("canvas");
+              canvas.width = 640;
+              canvas.height = canvas.width * (video.videoHeight / video.videoWidth) || 360;
+              const ctx = canvas.getContext("2d");
+              ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+              res(canvas.toDataURL("image/jpeg", 0.75));
+            }, {once:true});
+            setTimeout(()=>res(null), 3000);
+          });
+          if(frame) frames.push(frame);
+        }catch(e){ /* skip */ }
+      }
+      finish(frames.length > 0 ? frames : null);
+    });
+    
+    video.addEventListener("error", ()=>finish(null));
+    setTimeout(()=>finish(null), 15000);
+  });
+}
+
+async function callZhipuVideoAPI(videoBase64, prompt, mimeType){
   const apiKey = state.settings.zhipuKey || state.settings.apiKey;
   if(!apiKey){showToast("请先配置智谱 API Key");return null}
   if(!videoBase64){showToast("请先上传视频");return null}
   
-  // 视频 base64 需要带 data URL 前缀
-  const videoUrl = "data:video/mp4;base64," + videoBase64;
+  let videoUrl = "data:video/mp4;base64," + videoBase64;
+  let content = [
+    {type:"video_url", video_url:{url: videoUrl}},
+    {type:"text", text: prompt || "请分析这个视频的内容，并给出标题和文案建议"}
+  ];
+  
+  // 如果不是 mp4，先尝试转换（截取关键帧作为图片）
+  if(mimeType && !mimeType.includes("mp4")){
+    showToast("正在转换视频格式...");
+    const frames = await convertToMp4(videoBase64, mimeType);
+    if(frames && frames.length > 0){
+      // 用图片帧代替视频
+      content = [];
+      frames.forEach((frame, i)=>{
+        content.push({type:"image_url", image_url:{url: frame}});
+        content.push({type:"text", text:`第${i+1}帧`});
+      });
+      content.push({type:"text", text: prompt || "请根据以上视频截图分析这个视频的内容，并给出标题和文案建议"});
+    } else {
+      // 转换失败，尝试直接用原始 base64
+      const ext = mimeType ? mimeType.split("/")[1] : "mp4";
+      videoUrl = `data:${mimeType || "video/mp4"};base64,` + videoBase64;
+      content = [
+        {type:"video_url", video_url:{url: videoUrl}},
+        {type:"text", text: prompt || "请分析这个视频的内容，并给出标题和文案建议"}
+      ];
+    }
+  }
   
   try{
     const resp = await fetch("https://open.bigmodel.cn/api/paas/v4/chat/completions", {
@@ -3150,13 +3269,7 @@ async function callZhipuVideoAPI(videoBase64, prompt){
       },
       body: JSON.stringify({
         model: "glm-4v-plus-0111",
-        messages: [{
-          role: "user",
-          content: [
-            {type: "video_url", video_url: {url: videoUrl}},
-            {type: "text", text: prompt || "请分析这个视频的内容，并给出标题和文案建议"}
-          ]
-        }],
+        messages: [{role:"user", content: content}],
         temperature: 0.5,
         max_tokens: 2000
       })
@@ -3165,8 +3278,9 @@ async function callZhipuVideoAPI(videoBase64, prompt){
     if(!resp.ok){
       const errText = await resp.text();
       console.error("Video API error:", resp.status, errText);
-      if(resp.status === 401){showToast("API Key 无效")}
-      else if(resp.status === 413){showToast("视频太大，请压缩后重试")}
+      if(resp.status === 401){showToast("智谱 API Key 无效")}
+      else if(resp.status === 413){showToast("视频太大，请压缩后重试（建议 20MB 以内）")}
+      else if(resp.status === 400){showToast("视频格式不支持，请尝试 mp4 格式")}
       else{showToast("分析失败：" + resp.status)}
       return null;
     }
