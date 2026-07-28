@@ -682,6 +682,7 @@ let state = {
     deepseekKey: "", // DeepSeek密钥
     aicmKey: "",     // AICodeMirror密钥
     openaiKey: "",    // OpenAI密钥（Whisper语音转文字）
+    openaiBaseUrl: "https://api.openai.com",  // OpenAI API地址（可改为中转平台）
     // 云端同步配置
     supabaseUrl: "https://ycehddktfdybwraweteu.supabase.co",
     supabaseKey: "sb_publishable_go9QTtxqiBYFmvs1Vglk9g_52Io8kGM",
@@ -2457,8 +2458,26 @@ function editAPIKey(){
         <label class="fl" style="margin:0">🎙️ OpenAI API Key（Whisper 语音转文字）</label>
         <a href="https://platform.openai.com/api-keys" target="_blank" style="font-size:11px;color:#4f7cff;text-decoration:none;white-space:nowrap">获取密钥 →</a>
       </div>
-      <input class="fi" id="openaiKeyInput" type="text" placeholder="platform.openai.com 获取" value="${esc(s.openaiKey||"")}">
+      <input class="fi" id="openaiKeyInput" type="text" placeholder="填入 OpenAI 或中转平台的 API Key" value="${esc(s.openaiKey||"")}">
       <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.5">用于语音转文字路线，需要 Whisper 模型权限</div>
+    </div>
+
+    <div class="fg">
+      <label class="fl" style="margin:0">🔄 API 地址（官方或中转平台）</label>
+      <select class="fi" id="openaiBaseUrlSelect" onchange="document.getElementById('openaiBaseUrlInput').value=this.value" style="margin-bottom:6px">
+        <option value="">— 选择预设 —</option>
+        <option value="https://api.openai.com">OpenAI 官方（需翻墙）</option>
+        <option value="https://api2d.com">API2D 中转（推荐）</option>
+        <option value="https://openai.api2d.net">API2D 备用地址</option>
+        <option value="custom">自定义地址...</option>
+      </select>
+      <input class="fi" id="openaiBaseUrlInput" type="text" placeholder="https://api.openai.com 或 https://api2d.com" value="${esc(s.openaiBaseUrl||"https://api.openai.com")}">
+      <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.6">
+        访问不了 OpenAI 官网？用中转平台：<br>
+        1. 在 <a href="https://api2d.com" target="_blank" style="color:#4f7cff">api2d.com</a> 注册 → 充值 → 拿到 API Key<br>
+        2. 上方填 API2D 的 Key，地址选 api2d.com<br>
+        3. 直接可用，不用翻墙
+      </div>
     </div>
     
     <div style="font-size:11px;color:var(--t3);margin-bottom:10px">所有密钥只存在你手机本地，不会上传到任何服务器。</div>
@@ -2474,6 +2493,8 @@ function saveAPIKey(){
   state.settings.deepseekKey = document.getElementById("deepseekKeyInput").value.trim();
   state.settings.aicmKey = document.getElementById("aicmKeyInput").value.trim();
   state.settings.openaiKey = document.getElementById("openaiKeyInput").value.trim();
+  let baseUrl = document.getElementById("openaiBaseUrlInput").value.trim().replace(/\/+$/,"");
+  state.settings.openaiBaseUrl = baseUrl || "https://api.openai.com";
   // 兼容旧字段
   state.settings.apiKey = state.settings.zhipuKey || "";
   save();
@@ -2560,7 +2581,8 @@ function openAIGenerateFlow(videoId){
         </button>
       </div>
       <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;line-height:1.5">
-        ${state.settings.zhipuKey ? "✓ 智谱已配置" : "✗ 智谱未配置"} · ${state.settings.openaiKey ? "✓ OpenAI已配置" : "✗ OpenAI未配置"}
+        ${state.settings.zhipuKey ? "✓ 智谱已配置" : "✗ 智谱未配置"} · ${state.settings.openaiKey ? "✓ OpenAI已配置" : "✗ OpenAI未配置"}<br>
+        ${state.settings.openaiKey ? `地址：${esc((state.settings.openaiBaseUrl||"").replace(/^https?:\/\//,""))}` : ""}
       </div>
     </div>
     <div id="aiFlowProgress" style="display:none"></div>
@@ -3459,6 +3481,8 @@ async function callWhisperAPI(audioBlob, apiKey){
     return null;
   }
 
+  const baseUrl = (state.settings.openaiBaseUrl || "https://api.openai.com").replace(/\/+$/,"");
+
   try{
     const formData = new FormData();
     const fileName = audioBlob.type.includes("mp3") ? "audio.mp3" : "audio.webm";
@@ -3467,7 +3491,7 @@ async function callWhisperAPI(audioBlob, apiKey){
     formData.append("response_format", "text");
     formData.append("language", "zh");
 
-    const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+    const resp = await fetch(baseUrl + "/v1/audio/transcriptions", {
       method: "POST",
       headers: { "Authorization": "Bearer " + apiKey },
       body: formData
@@ -3476,7 +3500,7 @@ async function callWhisperAPI(audioBlob, apiKey){
     if(!resp.ok){
       const errText = await resp.text();
       console.error("Whisper API error:", resp.status, errText);
-      if(resp.status === 401) showToast("OpenAI API Key 无效");
+      if(resp.status === 401) showToast("API Key 无效，请检查 OpenAI/中转平台的 Key");
       else if(resp.status === 413) showToast("音频文件太大");
       else showToast("语音转文字失败：" + resp.status);
       return null;
