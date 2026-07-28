@@ -2141,6 +2141,9 @@ function openVideoModal(id){
         <label class="fl">备注</label>
         <textarea class="ft" id="vNote" placeholder="修改意见、客户要求等...">${esc(v.note||"")}</textarea>
       </div>
+      <button class="ai-btn" style="background:linear-gradient(135deg,#4f7cff,#7b5cff);color:#fff;border:none" onclick="openAIGenerateFlow('${id}')">
+        <span class="icon">🚀</span> AI 一键生成 · 上传视频自动写标题+文案
+      </button>
       <button class="ai-btn" onclick="openAIAssistant('${id}')">
         <span class="icon">✨</span> AI 助手 · 写脚本 / 写文案 / 分析视频
       </button>
@@ -2421,17 +2424,28 @@ function editAPIKey(){
     </div>
     
     <div class="fg">
-      <label class="fl">📝 智谱 API Key（分析视频 + 写文案）</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label class="fl" style="margin:0">📝 智谱 API Key（分析视频 + 写文案）</label>
+        <a href="https://open.bigmodel.cn/usercenter/apikeys" target="_blank" style="font-size:11px;color:#4f7cff;text-decoration:none;white-space:nowrap">获取密钥 →</a>
+      </div>
       <input class="fi" id="zhipuKeyInput" type="text" placeholder="open.bigmodel.cn 获取" value="${esc(s.zhipuKey||"")}">
+      <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.5">注册登录 → 实名认证 → 充值 → 创建 API Key</div>
     </div>
     
     <div class="fg">
-      <label class="fl">🤖 DeepSeek API Key（写脚本）</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label class="fl" style="margin:0">🤖 DeepSeek API Key（写脚本 + 生成文案）</label>
+        <a href="https://platform.deepseek.com/api_keys" target="_blank" style="font-size:11px;color:#4f7cff;text-decoration:none;white-space:nowrap">获取密钥 →</a>
+      </div>
       <input class="fi" id="deepseekKeyInput" type="text" placeholder="platform.deepseek.com 获取" value="${esc(s.deepseekKey||"")}">
+      <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.5">注册登录 → 充值 → 创建 API Key</div>
     </div>
     
     <div class="fg">
-      <label class="fl">💬 AICodeMirror API Key（问答 + 分析图片）</label>
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label class="fl" style="margin:0">💬 AICodeMirror API Key（问答 + 分析图片）</label>
+        <a href="https://www.aicodemirror.ai/dashboard/apikeys" target="_blank" style="font-size:11px;color:#4f7cff;text-decoration:none;white-space:nowrap">获取密钥 →</a>
+      </div>
       <input class="fi" id="aicmKeyInput" type="text" placeholder="aicodemirror.ai 获取" value="${esc(s.aicmKey||"")}">
     </div>
     
@@ -2461,6 +2475,302 @@ let aiCurrentVideoId = null;
 let aiCurrentTab = "script";
 let aiVideoBase64 = null;
 let aiVideoFileName = "";
+
+// AI 一键生成工作流状态
+let aiFlowVideoId = null;
+let aiFlowBase64 = null;
+let aiFlowFileName = "";
+let aiFlowResultData = null;
+
+// ============================================================
+// AI 一键生成工作流
+// ============================================================
+function openAIGenerateFlow(videoId){
+  aiFlowVideoId = videoId || null;
+  aiFlowBase64 = null;
+  aiFlowFileName = "";
+  aiFlowResultData = null;
+
+  // 检查密钥
+  if(!state.settings.zhipuKey || !state.settings.deepseekKey){
+    document.getElementById("modalTitle").textContent = "🚀 AI 一键生成";
+    document.getElementById("modalBody").innerHTML = `
+      <div style="text-align:center;padding:20px 10px">
+        <div style="font-size:40px;margin-bottom:12px">🔑</div>
+        <div style="font-size:15px;font-weight:700;color:#5a3e2b;margin-bottom:8px">未检测到 AI 密钥</div>
+        <div style="font-size:13px;color:var(--t2);line-height:1.8;margin-bottom:18px">
+          请先在设置中配置智谱和 DeepSeek 的 API 密钥
+        </div>
+        <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
+        <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">稍后再说</button>
+      </div>
+    `;
+    showModal();
+    return;
+  }
+
+  document.getElementById("modalTitle").textContent = "🚀 AI 一键生成";
+  document.getElementById("modalBody").innerHTML = `
+    <div style="background:linear-gradient(135deg,rgba(79,124,255,0.1),rgba(123,92,255,0.08));border-radius:14px;padding:12px;margin-bottom:14px;font-size:12px;color:#4f7cff;line-height:1.7">
+      <b style="font-size:13px">🚀 工作流</b><br>
+      上传视频 → 智谱分析 → DeepSeek 生成文案 → 自动填充
+    </div>
+    <div class="fg">
+      <label class="fl">上传视频文件</label>
+      <div class="ai-video-upload" id="aiFlowUpload" onclick="document.getElementById('aiFlowFileInput').click()">
+        <div id="aiFlowUploadHint">
+          <div style="font-size:28px;margin-bottom:6px">📹</div>
+          点击上传视频文件<br>
+          <span style="font-size:11px">支持 mp4 / mov / webm，建议 50MB 以内</span>
+        </div>
+        <input type="file" id="aiFlowFileInput" accept="video/*" style="display:none">
+      </div>
+    </div>
+    <button class="ai-btn" id="aiFlowStartBtn" style="background:linear-gradient(135deg,#4f7cff,#7b5cff);color:#fff;border:none" onclick="runAIGenerateFlow()">
+      <span class="icon">🚀</span> 开始生成
+    </button>
+    <div id="aiFlowProgress" style="display:none"></div>
+    <div id="aiFlowResult" style="display:none"></div>
+    <div id="aiFlowActions" style="display:none"></div>
+  `;
+  showModal();
+
+  setTimeout(()=>{
+    const input = document.getElementById("aiFlowFileInput");
+    if(input) input.onchange = handleAIFlowVideoUpload;
+  }, 100);
+}
+
+function handleAIFlowVideoUpload(e){
+  const file = e.target.files[0];
+  if(!file) return;
+  if(file.size > 50 * 1024 * 1024){
+    showToast("视频太大，建议 50MB 以内");
+    return;
+  }
+  aiFlowFileName = file.name;
+  const uploadEl = document.getElementById("aiFlowUpload");
+  uploadEl.classList.add("has-file");
+  document.getElementById("aiFlowUploadHint").innerHTML = `
+    <div style="font-size:24px;margin-bottom:4px">✓</div>
+    <b>${esc(file.name)}</b><br>
+    <span style="font-size:11px">${(file.size/1024/1024).toFixed(1)} MB · 点击重新选择</span>
+  `;
+  const reader = new FileReader();
+  reader.onload = (ev)=>{
+    aiFlowBase64 = ev.target.result.split(",")[1];
+  };
+  reader.readAsDataURL(file);
+}
+
+function showFlowProgress(html){
+  const el = document.getElementById("aiFlowProgress");
+  if(el){ el.style.display = "block"; el.innerHTML = html; }
+}
+
+function showFlowResult(html){
+  const el = document.getElementById("aiFlowResult");
+  if(el){ el.style.display = "block"; el.innerHTML = html; }
+}
+
+function showFlowActions(html){
+  const el = document.getElementById("aiFlowActions");
+  if(el){ el.style.display = "block"; el.innerHTML = html; }
+}
+
+function hideFlowUI(){
+  const p = document.getElementById("aiFlowProgress");
+  const r = document.getElementById("aiFlowResult");
+  const a = document.getElementById("aiFlowActions");
+  if(p) p.style.display = "none";
+  if(r) r.style.display = "none";
+  if(a) a.style.display = "none";
+}
+
+async function runAIGenerateFlow(){
+  if(!aiFlowBase64){
+    showToast("请先上传视频文件");
+    return;
+  }
+
+  // 隐藏开始按钮
+  const startBtn = document.getElementById("aiFlowStartBtn");
+  if(startBtn) startBtn.style.display = "none";
+  hideFlowUI();
+
+  // 步骤1：智谱分析视频
+  showFlowProgress(`
+    <div class="ai-loading" style="padding:16px">
+      <span>步骤 1/2 · 智谱正在分析视频...</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  `);
+
+  const analysisPrompt = `分析这个视频，按以下格式输出：
+1. 谁：（主角是谁，什么身份/职业/背景）
+2. 在哪儿：（在哪个国家/城市/场景）
+3. 干什么：（在做什么事，状态如何）
+4. 细节：（2-3个关键画面或具体动作）
+5. 情绪点：（最能打动人的一句话或一个瞬间）
+每项1-2句话，不要啰嗦。`;
+
+  const analysisResult = await callZhipuVideoAPI(aiFlowBase64, analysisPrompt);
+
+  if(!analysisResult){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">视频分析失败，请检查智谱密钥或视频大小</div>`);
+    if(startBtn) startBtn.style.display = "";
+    return;
+  }
+
+  // 步骤2：DeepSeek 生成文案
+  showFlowProgress(`
+    <div class="ai-loading" style="padding:16px">
+      <span>步骤 2/2 · DeepSeek 正在生成文案...</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  `);
+
+  const copyPrompt = `你是短视频文案专家。根据以下视频分析结果，生成两个版本的文案。
+
+## 视频分析结果
+${analysisResult}
+
+## 输出规则（每次输出两个版本）
+短版：
+标题：15字以内，一句话抓住核心
+正文：1-2句话，结尾落在"人"身上
+
+长版：
+标题：20-30字，有完整信息量
+正文：3-4句话，有画面感、有叙事感，结尾落在"人"身上
+
+## 风格要求
+1. 永远不说：家人们、谁懂啊、救命、点赞关注、宝藏、绝绝子
+2. 有真实感、有画面感，不空泛煽情
+3. 结尾收在"人"身上
+
+## 输出格式
+请严格按以下 JSON 格式输出，不要加任何其他内容：
+{"shortTitle":"短版标题","shortBody":"短版正文","longTitle":"长版标题","longBody":"长版正文"}`;
+
+  const copyResult = await callDeepSeekAPI(
+    [{role:"user", content: copyPrompt}],
+    state.settings.deepseekKey
+  );
+
+  if(!copyResult){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">文案生成失败，请检查 DeepSeek 密钥</div>`);
+    if(startBtn) startBtn.style.display = "";
+    return;
+  }
+
+  // 解析 JSON 结果
+  const parsed = parseCopyResult(copyResult);
+  if(!parsed){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">文案格式解析失败</div>`);
+    if(startBtn) startBtn.style.display = "";
+    return;
+  }
+
+  aiFlowResultData = parsed;
+
+  // 隐藏进度
+  showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--green);font-size:13px;font-weight:600">✓ 生成完成</div>`);
+
+  // 显示结果
+  showFlowResult(`
+    <div style="margin-top:10px">
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <b style="font-size:13px;color:#5a3e2b">短版</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowText('short')">📋 复制</button>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:4px">${esc(parsed.shortTitle)}</div>
+        <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(parsed.shortBody)}</div>
+      </div>
+      <div style="background:var(--bg);border-radius:12px;padding:12px">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <b style="font-size:13px;color:#5a3e2b">长版</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowText('long')">📋 复制</button>
+        </div>
+        <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:4px">${esc(parsed.longTitle)}</div>
+        <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(parsed.longBody)}</div>
+      </div>
+    </div>
+  `);
+
+  // 显示操作按钮
+  showFlowActions(`
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1" onclick="runAIGenerateFlow()">🔄 重新生成</button>
+      <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
+  `);
+}
+
+function parseCopyResult(text){
+  if(!text) return null;
+  try{
+    // 尝试直接解析 JSON
+    let cleaned = text.trim();
+    // 去掉 markdown 代码块
+    if(cleaned.startsWith("```")){
+      cleaned = cleaned.replace(/^```(?:json)?\n?/,"").replace(/\n?```$/,"");
+    }
+    // 尝试找到 JSON 对象
+    const jsonMatch = cleaned.match(/\{[\s\S]*\}/);
+    if(jsonMatch){
+      const obj = JSON.parse(jsonMatch[0]);
+      if(obj.shortTitle && obj.shortBody && obj.longTitle && obj.longBody){
+        return obj;
+      }
+    }
+    // 直接解析
+    const obj = JSON.parse(cleaned);
+    if(obj.shortTitle && obj.shortBody && obj.longTitle && obj.longBody){
+      return obj;
+    }
+    return null;
+  }catch(e){
+    console.error("parseCopyResult error:", e);
+    return null;
+  }
+}
+
+function copyFlowText(type){
+  if(!aiFlowResultData) return;
+  let text = "";
+  if(type === "short"){
+    text = `短版：${aiFlowResultData.shortTitle} ${aiFlowResultData.shortBody}`;
+  } else {
+    text = `长版：${aiFlowResultData.longTitle} ${aiFlowResultData.longBody}`;
+  }
+  const ta = document.createElement("textarea");
+  ta.value = text;
+  document.body.appendChild(ta);
+  ta.select();
+  try{ document.execCommand("copy"); showToast("已复制"); }catch(e){ showToast("复制失败"); }
+  document.body.removeChild(ta);
+}
+
+function fillAIGenerateResult(){
+  if(!aiFlowResultData){
+    showToast("没有可填充的结果");
+    return;
+  }
+  const d = aiFlowResultData;
+  // 填标题
+  const titleEl = document.getElementById("vTitle");
+  if(titleEl) titleEl.value = d.shortTitle;
+  // 填备注
+  const noteEl = document.getElementById("vNote");
+  if(noteEl){
+    noteEl.value = `短版：${d.shortTitle} ${d.shortBody}\n\n长版：${d.longTitle} ${d.longBody}`;
+  }
+  closeModal();
+  showToast("已填入标题和备注 ✓");
+}
 
 function openAIAssistant(videoId){
   if(!state.settings.apiKey){
