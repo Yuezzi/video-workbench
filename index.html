@@ -2729,11 +2729,12 @@ ${analysisResult}
 
 function parseCopyResult(text){
   if(!text) return null;
+  let cleaned = text.trim();
+  // 去掉 markdown 代码块
+  cleaned = cleaned.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
+
+  // 方案1：尝试提取 JSON
   try{
-    let cleaned = text.trim();
-    // 去掉 markdown 代码块
-    cleaned = cleaned.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
-    // 尝试找到 JSON 对象（从第一个 { 到最后一个 }）
     const start = cleaned.indexOf("{");
     const end = cleaned.lastIndexOf("}");
     if(start >= 0 && end > start){
@@ -2748,9 +2749,8 @@ function parseCopyResult(text){
         };
       }
     }
-    // 直接解析
     const obj = JSON.parse(cleaned);
-    if(obj.shortTitle !== undefined && obj.shortBody !== undefined && obj.longTitle !== undefined && obj.longBody !== undefined){
+    if(obj.shortTitle !== undefined){
       return {
         shortTitle: String(obj.shortTitle || ""),
         shortBody: String(obj.shortBody || ""),
@@ -2758,11 +2758,82 @@ function parseCopyResult(text){
         longBody: String(obj.longBody || "")
       };
     }
-    return null;
-  }catch(e){
-    console.error("parseCopyResult error:", e, "raw:", text.substring(0, 200));
-    return null;
+  }catch(e){ /* JSON 解析失败，走方案2 */ }
+
+  // 方案2：从纯文本提取（DeepSeek 可能不按 JSON 格式返回）
+  // 尝试匹配"短版"和"长版"标记
+  const lines = cleaned.split("\n");
+  let shortTitle = "", shortBody = "", longTitle = "", longBody = "";
+  let mode = ""; // "short" | "long"
+
+  for(let i=0; i<lines.length; i++){
+    const line = lines[i].trim();
+    if(!line) continue;
+
+    // 检测短版/长版标记
+    if(line.match(/^(短版|短文案|##\s*短版)/)){
+      mode = "short";
+      // 同行可能有标题
+      const afterColon = line.replace(/^(短版|短文案|##\s*短版)[:：\s]*/, "");
+      if(afterColon && afterColon.length < 30) shortTitle = afterColon;
+      continue;
+    }
+    if(line.match(/^(长版|长文案|##\s*长版)/)){
+      mode = "long";
+      const afterColon = line.replace(/^(长版|长文案|##\s*长版)[:：\s]*/, "");
+      if(afterColon && afterColon.length < 40) longTitle = afterColon;
+      continue;
+    }
+
+    // 检测标题标记
+    if(line.match(/^(标题|短标题|长标题)[:：]/)){
+      const val = line.replace(/^(标题|短标题|长标题)[:：]\s*/, "");
+      if(mode === "long" || line.startsWith("长标题")) longTitle = val;
+      else if(mode === "short" || line.startsWith("短标题")) shortTitle = val;
+      else shortTitle = val;
+      continue;
+    }
+    if(line.match(/^(正文|内容|文案)[:：]/)){
+      const val = line.replace(/^(正文|内容|文案)[:：]\s*/, "");
+      if(mode === "long") longBody = val;
+      else if(mode === "short") shortBody = val;
+      continue;
+    }
+
+    // 纯文本行，根据当前 mode 归类
+    if(mode === "short"){
+      if(!shortTitle && line.length <= 20){ shortTitle = line; }
+      else { shortBody = shortBody ? shortBody + line : line; }
+    } else if(mode === "long"){
+      if(!longTitle && line.length <= 30){ longTitle = line; }
+      else { longBody = longBody ? longBody + line : line; }
+    }
   }
+
+  // 如果提取到了内容，返回
+  if(shortTitle || shortBody || longTitle || longBody){
+    return {
+      shortTitle: shortTitle || "（短版标题）",
+      shortBody: shortBody || "",
+      longTitle: longTitle || shortTitle || "（长版标题）",
+      longBody: longBody || shortBody || ""
+    };
+  }
+
+  // 方案3：如果没有任何标记，把整个文本当短版正文
+  if(cleaned.length > 5){
+    // 取第一行做标题
+    const firstLine = cleaned.split("\n").find(l=>l.trim().length > 0) || "";
+    return {
+      shortTitle: firstLine.substring(0, 20),
+      shortBody: cleaned,
+      longTitle: firstLine.substring(0, 30),
+      longBody: cleaned
+    };
+  }
+
+  console.error("parseCopyResult: all methods failed, raw:", text.substring(0, 300));
+  return null;
 }
 
 function copyText(text){
