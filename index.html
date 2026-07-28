@@ -538,7 +538,6 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .dash-empty{text-align:center;padding:30px 20px;color:var(--t2);font-size:13px}
 .dash-month-note{text-align:center;font-size:11px;color:var(--t2);margin-top:4px}
 </style>
-<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -2520,20 +2519,15 @@ let aiFlowFile = null;     // 保存原始 File 对象（Whisper路线需要）
 let aiFlowRoute = null;    // "zhipu" | "whisper"
 
 // ============================================================
-// AI 一键生成工作流（v26: 3组风格 + 语音转文字路线）
+// AI 一键生成工作流（v27: 字幕输入 + 可选视频画面分析）
 // ============================================================
 const GROUP_COLORS = ["#6ba4d9", "#9b7bd4", "#d4a373"]; // 蓝/紫/棕
 
 function openAIGenerateFlow(videoId){
   aiFlowVideoId = videoId || null;
-  aiFlowBase64 = null;
-  aiFlowFileName = "";
   aiFlowResultData = null;
-  aiFlowMimeType = "";
-  aiFlowFile = null;
-  aiFlowRoute = null;
 
-  // 检查至少有 DeepSeek Key（两条路线都需要）
+  // 检查 DeepSeek Key（必需）
   if(!state.settings.deepseekKey){
     document.getElementById("modalTitle").textContent = "🚀 AI 一键生成";
     document.getElementById("modalBody").innerHTML = `
@@ -2541,7 +2535,7 @@ function openAIGenerateFlow(videoId){
         <div style="font-size:40px;margin-bottom:12px">🔑</div>
         <div style="font-size:15px;font-weight:700;color:#5a3e2b;margin-bottom:8px">需要 DeepSeek API Key</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.8;margin-bottom:18px">
-          AI 生成文案需要 DeepSeek 密钥<br>另外还需要智谱或 OpenAI 密钥（用于分析视频/语音）
+          AI 生成文案需要 DeepSeek 密钥<br>请先在设置中配置
         </div>
         <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
         <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">稍后再说</button>
@@ -2551,40 +2545,46 @@ function openAIGenerateFlow(videoId){
     return;
   }
 
+  const hasZhipu = !!state.settings.zhipuKey;
+
   document.getElementById("modalTitle").textContent = "🚀 AI 一键生成";
   document.getElementById("modalBody").innerHTML = `
     <div style="background:linear-gradient(135deg,rgba(79,124,255,0.1),rgba(123,92,255,0.08));border-radius:14px;padding:12px;margin-bottom:14px;font-size:12px;color:#4f7cff;line-height:1.7">
       <b style="font-size:13px">🚀 工作流</b><br>
-      上传视频 → 选择路线 → AI 分析 → 生成3组文案 → 填入
+      粘贴字幕/文案 → DeepSeek 生成3组风格文案 → 选一组填入
     </div>
+
     <div class="fg">
-      <label class="fl">上传视频文件</label>
-      <div class="ai-video-upload" id="aiFlowUpload" onclick="document.getElementById('aiFlowFileInput').click()">
-        <div id="aiFlowUploadHint">
-          <div style="font-size:28px;margin-bottom:6px">📹</div>
-          点击上传视频文件<br>
-          <span style="font-size:11px">支持 mp4 / mov / webm，智谱路线建议 50MB 内，语音路线最大 1GB</span>
+      <label class="fl">📝 粘贴视频字幕或文案内容</label>
+      <textarea id="aiFlowSubtitle" class="fi" style="min-height:120px;resize:vertical;font-size:13px;line-height:1.6" placeholder="把视频的字幕文本粘贴到这里...&#10;&#10;例如：&#10;今天给大家分享一个提升工作效率的方法&#10;第一步，把每天最重要的三件事写下来&#10;第二步，......"></textarea>
+      <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.5">
+        💡 你可以用剪映等工具提取字幕，粘贴到这里<br>
+        字幕越完整，生成的文案越准确
+      </div>
+    </div>
+
+    ${hasZhipu ? `
+    <div class="fg">
+      <label class="fl" style="display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="aiFlowUseZhipu" style="width:16px;height:16px">
+        <span>同时上传视频让智谱分析画面（可选）</span>
+      </label>
+      <div id="aiFlowUploadArea" style="display:none">
+        <div class="ai-video-upload" id="aiFlowUpload" onclick="document.getElementById('aiFlowFileInput').click()">
+          <div id="aiFlowUploadHint">
+            <div style="font-size:28px;margin-bottom:6px">📹</div>
+            点击上传视频（可选）<br>
+            <span style="font-size:11px">智谱分析画面细节，建议 50MB 内</span>
+          </div>
+          <input type="file" id="aiFlowFileInput" accept="video/*" style="display:none">
         </div>
-        <input type="file" id="aiFlowFileInput" accept="video/*" style="display:none">
       </div>
     </div>
-    <div id="aiFlowRoute" style="display:none">
-      <div style="font-size:13px;font-weight:600;color:#5a3e2b;margin-bottom:10px;text-align:center">选择分析路线</div>
-      <div style="display:flex;gap:10px">
-        <button class="ai-btn" style="background:linear-gradient(135deg,#6ba4d9,#5a8db8);color:#fff;border:none;flex:1;font-size:12px;padding:12px 8px" onclick="runAIGenerateFlow('zhipu')">
-          <span class="icon">📷</span> 画面分析<br>
-          <span style="font-size:10px;opacity:.85">智谱AI · 适合无语音视频</span>
-        </button>
-        <button class="ai-btn" style="background:linear-gradient(135deg,#9b7bd4,#8268c4);color:#fff;border:none;flex:1;font-size:12px;padding:12px 8px" onclick="runAIGenerateFlow('whisper')">
-          <span class="icon">🎙️</span> 语音转文字<br>
-          <span style="font-size:10px;opacity:.85">Whisper · 适合有语音视频</span>
-        </button>
-      </div>
-      <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;line-height:1.5">
-        ${state.settings.zhipuKey ? "✓ 智谱已配置" : "✗ 智谱未配置"} · ${state.settings.openaiKey ? "✓ OpenAI已配置" : "✗ OpenAI未配置"}<br>
-        ${state.settings.openaiKey ? `地址：${esc((state.settings.openaiBaseUrl||"").replace(/^https?:\/\//,""))}` : ""}
-      </div>
-    </div>
+    ` : ''}
+
+    <button class="ai-btn" id="aiFlowStartBtn" style="background:linear-gradient(135deg,#4f7cff,#7b5cff);color:#fff;border:none" onclick="runAIGenerateFlow()">
+      <span class="icon">🚀</span> 生成3组文案
+    </button>
     <div id="aiFlowProgress" style="display:none"></div>
     <div id="aiFlowResult" style="display:none"></div>
     <div id="aiFlowActions" style="display:none"></div>
@@ -2592,6 +2592,15 @@ function openAIGenerateFlow(videoId){
   showModal();
 
   setTimeout(()=>{
+    // 勾选框联动
+    const cb = document.getElementById("aiFlowUseZhipu");
+    if(cb){
+      cb.onchange = ()=>{
+        const area = document.getElementById("aiFlowUploadArea");
+        if(area) area.style.display = cb.checked ? "block" : "none";
+      };
+    }
+    // 文件上传
     const input = document.getElementById("aiFlowFileInput");
     if(input) input.onchange = handleAIFlowVideoUpload;
   }, 100);
@@ -2600,10 +2609,10 @@ function openAIGenerateFlow(videoId){
 function handleAIFlowVideoUpload(e){
   const file = e.target.files[0];
   if(!file) return;
-  aiFlowFile = file; // 保存原始 File 对象（Whisper 路线需要）
   aiFlowFileName = file.name;
   aiFlowMimeType = file.type || "video/mp4";
   const uploadEl = document.getElementById("aiFlowUpload");
+  if(!uploadEl) return;
   uploadEl.classList.add("has-file");
   const fmtBadge = aiFlowMimeType.includes("mp4") ? "" : ` · ${aiFlowMimeType.split("/")[1]||"mov"}将自动转换`;
   document.getElementById("aiFlowUploadHint").innerHTML = `
@@ -2614,9 +2623,6 @@ function handleAIFlowVideoUpload(e){
   const reader = new FileReader();
   reader.onload = (ev)=>{
     aiFlowBase64 = ev.target.result.split(",")[1];
-    // 显示路线选择
-    const routeEl = document.getElementById("aiFlowRoute");
-    if(routeEl) routeEl.style.display = "block";
   };
   reader.readAsDataURL(file);
 }
@@ -2646,70 +2652,43 @@ function hideFlowUI(){
 }
 
 // ============================================================
-// 路线分发
+// 生成文案（v27: 字幕为主，视频画面为辅）
 // ============================================================
-async function runAIGenerateFlow(route){
-  if(!aiFlowBase64 && !aiFlowFile){
-    showToast("请先上传视频文件");
+async function runAIGenerateFlow(){
+  const subtitle = (document.getElementById("aiFlowSubtitle")?.value || "").trim();
+  if(!subtitle){
+    showToast("请先粘贴字幕内容");
     return;
   }
-  aiFlowRoute = route;
-
-  // 隐藏路线选择
-  const routeEl = document.getElementById("aiFlowRoute");
-  if(routeEl) routeEl.style.display = "none";
-  hideFlowUI();
-
-  if(route === 'whisper'){
-    // 检查 OpenAI Key
-    if(!state.settings.openaiKey){
-      showFlowProgress(`<div style="padding:14px;text-align:center">
-        <div style="font-size:13px;color:var(--danger);margin-bottom:10px;font-weight:600">未配置 OpenAI API Key</div>
-        <div style="font-size:12px;color:var(--t2);margin-bottom:14px">语音转文字路线需要 OpenAI API Key</div>
-        <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
-      </div>`);
-      return;
-    }
-    await runWhisperFlow();
-  } else {
-    // 智谱路线检查
-    if(!state.settings.zhipuKey){
-      showFlowProgress(`<div style="padding:14px;text-align:center">
-        <div style="font-size:13px;color:var(--danger);margin-bottom:10px;font-weight:600">未配置智谱 API Key</div>
-        <div style="font-size:12px;color:var(--t2);margin-bottom:14px">画面分析路线需要智谱 API Key</div>
-        <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
-      </div>`);
-      return;
-    }
-    // 检查视频大小
-    if(aiFlowFile && aiFlowFile.size > 50 * 1024 * 1024){
-      showFlowProgress(`<div style="padding:14px;text-align:center">
-        <div style="font-size:13px;color:var(--danger);margin-bottom:8px;font-weight:600">视频太大（${(aiFlowFile.size/1024/1024).toFixed(0)}MB）</div>
-        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">智谱画面分析建议 50MB 以内<br>大视频请选择「语音转文字」路线</div>
-      </div>`);
-      const routeEl2 = document.getElementById("aiFlowRoute");
-      if(routeEl2) routeEl2.style.display = "block";
-      return;
-    }
-    await runZhipuFlow();
+  if(subtitle.length < 10){
+    showToast("字幕内容太短，至少10个字");
+    return;
   }
-}
 
-// ============================================================
-// 智谱路线
-// ============================================================
-async function runZhipuFlow(){
+  // 检查是否要用智谱
+  const useZhipu = document.getElementById("aiFlowUseZhipu")?.checked && aiFlowBase64;
+  if(useZhipu && !state.settings.zhipuKey){
+    showToast("智谱 Key 未配置，将仅使用字幕生成");
+  }
+
+  // 隐藏开始按钮
+  const startBtn = document.getElementById("aiFlowStartBtn");
+  if(startBtn) startBtn.style.display = "none";
   hideFlowUI();
 
-  // 步骤1：智谱分析视频
-  showFlowProgress(`
-    <div class="ai-loading" style="padding:16px">
-      <span>步骤 1/2 · 智谱正在分析视频...</span>
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    </div>
-  `);
+  let analysisText = "";
+  let stepLabel = "";
 
-  const analysisPrompt = `分析这个视频，按以下格式输出：
+  if(useZhipu && state.settings.zhipuKey){
+    // 步骤1：智谱分析视频画面
+    showFlowProgress(`
+      <div class="ai-loading" style="padding:16px">
+        <span>步骤 1/2 · 智谱正在分析视频画面...</span>
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+    `);
+
+    const analysisPrompt = `分析这个视频，按以下格式输出：
 1. 谁：（主角是谁，什么身份/职业/背景）
 2. 在哪儿：（在哪个国家/城市/场景）
 3. 干什么：（在做什么事，状态如何）
@@ -2717,141 +2696,38 @@ async function runZhipuFlow(){
 5. 情绪点：（最能打动人的一句话或一个瞬间）
 每项1-2句话，不要啰嗦。`;
 
-  const analysisResult = await callZhipuVideoAPI(aiFlowBase64, analysisPrompt, aiFlowMimeType);
+    const zhipuResult = await callZhipuVideoAPI(aiFlowBase64, analysisPrompt, aiFlowMimeType);
 
-  if(!analysisResult){
-    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">视频分析失败，请检查智谱密钥或视频大小</div>`);
-    showFlowActions(`
-      <div class="modal-actions">
-        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
-      </div>
-    `);
-    return;
-  }
-
-  // 步骤2：DeepSeek 生成3组文案
-  showFlowProgress(`
-    <div class="ai-loading" style="padding:16px">
-      <span>步骤 2/2 · DeepSeek 正在生成3组文案...</span>
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-    </div>
-  `);
-
-  const copyPrompt = buildCopyPrompt(analysisResult);
-  const copyResult = await callDeepSeekAPI(
-    [{role:"user", content: copyPrompt}],
-    state.settings.deepseekKey
-  );
-
-  await handleCopyResult(copyResult);
-}
-
-// ============================================================
-// Whisper 语音转文字路线
-// ============================================================
-async function runWhisperFlow(){
-  hideFlowUI();
-
-  // 步骤1：提取音频
-  showFlowProgress(`
-    <div class="ai-loading" style="padding:16px">
-      <span>步骤 1/3 · 正在提取音频...</span>
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-      <div id="ffmpegProgress" style="font-size:11px;color:var(--t3);margin-top:6px">加载中...</div>
-    </div>
-  `);
-
-  let audioBlob;
-  try{
-    audioBlob = await extractAudioWithFFmpeg(aiFlowFile, (ratio) => {
-      const el = document.getElementById("ffmpegProgress");
-      if(el) el.textContent = `进度：${Math.round(ratio * 100)}%`;
-    });
-  }catch(e){
-    console.error("ffmpeg failed, trying Web Audio:", e);
-    // 降级到 Web Audio API
-    showFlowProgress(`
-      <div class="ai-loading" style="padding:16px">
-        <span>正在用备用方案提取音频...</span>
-        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-        <div style="font-size:11px;color:var(--t3);margin-top:6px">需要实时播放视频录制，请稍候</div>
-      </div>
-    `);
-    try{
-      audioBlob = await extractAudioWithWebAudio(aiFlowFile);
-    }catch(e2){
-      showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">音频提取失败：${esc(e2.message||"")}</div>`);
-      showFlowActions(`
-        <div class="modal-actions">
-          <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
-          <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
-        </div>
-      `);
-      return;
+    if(zhipuResult){
+      // 合并字幕和画面分析
+      analysisText = `【视频画面分析】\n${zhipuResult}\n\n【视频字幕内容】\n${subtitle}`;
+    } else {
+      // 智谱失败，只用字幕
+      analysisText = subtitle;
+      showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--orange);font-size:12px">智谱分析失败，将仅使用字幕生成文案</div>`);
     }
+    stepLabel = "步骤 2/2";
+  } else {
+    // 纯字幕路线
+    analysisText = subtitle;
+    stepLabel = "正在";
   }
 
-  if(!audioBlob || audioBlob.size < 100){
-    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">音频提取失败，可能视频没有音轨</div>`);
-    showFlowActions(`
-      <div class="modal-actions">
-        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
-      </div>
-    `);
-    return;
-  }
-
-  // 检查音频大小
-  if(audioBlob.size > 25 * 1024 * 1024){
-    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">音频文件太大（${(audioBlob.size/1024/1024).toFixed(1)}MB），Whisper 限制 25MB</div>`);
-    showFlowActions(`
-      <div class="modal-actions">
-        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
-      </div>
-    `);
-    return;
-  }
-
-  // 步骤2：Whisper 转文字
+  // DeepSeek 生成3组文案
   showFlowProgress(`
     <div class="ai-loading" style="padding:16px">
-      <span>步骤 2/3 · 正在转文字（Whisper）...</span>
-      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
-      <div style="font-size:11px;color:var(--t3);margin-top:6px">音频 ${(audioBlob.size/1024/1024).toFixed(1)}MB</div>
-    </div>
-  `);
-
-  const transcript = await callWhisperAPI(audioBlob, state.settings.openaiKey);
-
-  if(!transcript || transcript.length < 5){
-    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">语音转文字失败，请检查 OpenAI Key 或视频是否有音轨</div>`);
-    showFlowActions(`
-      <div class="modal-actions">
-        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
-      </div>
-    `);
-    return;
-  }
-
-  // 步骤3：DeepSeek 生成3组文案
-  showFlowProgress(`
-    <div class="ai-loading" style="padding:16px">
-      <span>步骤 3/3 · DeepSeek 正在生成3组文案...</span>
+      <span>${stepLabel} · DeepSeek 正在生成3组文案...</span>
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
   `);
 
-  const copyPrompt = buildCopyPrompt(transcript, true);
+  const copyPrompt = buildCopyPrompt(analysisText, true);
   const copyResult = await callDeepSeekAPI(
     [{role:"user", content: copyPrompt}],
     state.settings.deepseekKey
   );
 
-  await handleCopyResult(copyResult, transcript);
+  await handleCopyResult(copyResult, subtitle);
 }
 
 // ============================================================
@@ -3346,172 +3222,6 @@ function cancelFillVideo(){
     </div>
     <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
   `);
-}
-
-// ============================================================
-// ffmpeg.wasm 音频提取
-// ============================================================
-let ffmpegInstance = null;
-let ffmpegLoading = false;
-
-async function loadFFmpeg(){
-  if(ffmpegInstance) return ffmpegInstance;
-  if(ffmpegLoading) {
-    // 等待正在加载的实例
-    while(ffmpegLoading){ await new Promise(r=>setTimeout(r, 200)); }
-    return ffmpegInstance;
-  }
-  ffmpegLoading = true;
-  try{
-    if(typeof FFmpeg === "undefined"){
-      throw new Error("ffmpeg.wasm 未加载，请检查网络");
-    }
-    const { createFFmpeg } = FFmpeg;
-    ffmpegInstance = createFFmpeg({
-      log: false,
-      corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
-    });
-    await ffmpegInstance.load();
-    return ffmpegInstance;
-  }catch(e){
-    ffmpegLoading = false;
-    throw e;
-  }finally{
-    ffmpegLoading = false;
-  }
-}
-
-async function extractAudioWithFFmpeg(videoFile, onProgress){
-  const ffmpeg = await loadFFmpeg();
-  const ext = videoFile.name.split(".").pop() || "mp4";
-  const inputName = "input." + ext;
-  const outputName = "output.mp3";
-
-  // 写入文件
-  const fileData = await new Promise((resolve) => {
-    const reader = new FileReader();
-    reader.onload = (e) => resolve(new Uint8Array(e.target.result));
-    reader.readAsArrayBuffer(videoFile);
-  });
-  ffmpeg.FS("writeFile", inputName, fileData);
-
-  // 进度
-  ffmpeg.setProgress(({ ratio }) => {
-    if(onProgress && ratio > 0 && ratio < 1) onProgress(ratio);
-  });
-
-  // 提取音频：mp3, 16kHz, mono, 32kbps
-  await ffmpeg.run("-i", inputName, "-vn", "-acodec", "libmp3lame", "-ar", "16000", "-ac", "1", "-b:a", "32k", outputName);
-
-  const data = ffmpeg.FS("readFile", outputName);
-  const blob = new Blob([data.buffer], { type: "audio/mp3" });
-
-  // 清理
-  try{ ffmpeg.FS("unlink", inputName); }catch(e){}
-  try{ ffmpeg.FS("unlink", outputName); }catch(e){}
-
-  return blob;
-}
-
-// 降级方案：Web Audio API 实时录制
-async function extractAudioWithWebAudio(videoFile){
-  return new Promise((resolve, reject) => {
-    const video = document.createElement("video");
-    video.src = URL.createObjectURL(videoFile);
-    video.muted = false;
-    video.preload = "auto";
-
-    let audioContext, source, dest, recorder;
-    const chunks = [];
-
-    video.addEventListener("loadedmetadata", () => {
-      try{
-        audioContext = new (window.AudioContext || window.webkitAudioContext)();
-        source = audioContext.createMediaElementSource(video);
-        dest = audioContext.createMediaStreamDestination();
-        source.connect(dest);
-        source.connect(audioContext.destination); // 让用户听到
-
-        recorder = new MediaRecorder(dest.stream, { mimeType: "audio/webm;codecs=opus" });
-        recorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
-        recorder.onstop = () => {
-          const blob = new Blob(chunks, { type: "audio/webm" });
-          URL.revokeObjectURL(video.src);
-          resolve(blob);
-        };
-
-        recorder.start();
-        video.play();
-      }catch(e){
-        URL.revokeObjectURL(video.src);
-        reject(e);
-      }
-    });
-
-    video.addEventListener("ended", () => {
-      if(recorder && recorder.state !== "inactive") recorder.stop();
-      if(audioContext) audioContext.close();
-    });
-
-    video.addEventListener("error", () => {
-      URL.revokeObjectURL(video.src);
-      reject(new Error("视频加载失败"));
-    });
-
-    // 超时保护（最多10分钟）
-    setTimeout(() => {
-      if(recorder && recorder.state !== "inactive"){
-        recorder.stop();
-        if(audioContext) audioContext.close();
-      }
-    }, 10 * 60 * 1000);
-  });
-}
-
-// ============================================================
-// Whisper API 调用
-// ============================================================
-async function callWhisperAPI(audioBlob, apiKey){
-  if(!apiKey){
-    showToast("请先配置 OpenAI API Key");
-    return null;
-  }
-  if(audioBlob.size > 25 * 1024 * 1024){
-    showToast("音频文件太大（超过25MB）");
-    return null;
-  }
-
-  const baseUrl = (state.settings.openaiBaseUrl || "https://api.openai.com").replace(/\/+$/,"");
-
-  try{
-    const formData = new FormData();
-    const fileName = audioBlob.type.includes("mp3") ? "audio.mp3" : "audio.webm";
-    formData.append("file", audioBlob, fileName);
-    formData.append("model", "whisper-1");
-    formData.append("response_format", "text");
-    formData.append("language", "zh");
-
-    const resp = await fetch(baseUrl + "/v1/audio/transcriptions", {
-      method: "POST",
-      headers: { "Authorization": "Bearer " + apiKey },
-      body: formData
-    });
-
-    if(!resp.ok){
-      const errText = await resp.text();
-      console.error("Whisper API error:", resp.status, errText);
-      if(resp.status === 401) showToast("API Key 无效，请检查 OpenAI/中转平台的 Key");
-      else if(resp.status === 413) showToast("音频文件太大");
-      else showToast("语音转文字失败：" + resp.status);
-      return null;
-    }
-
-    return await resp.text();
-  }catch(e){
-    console.error(e);
-    showToast("网络错误：" + e.message);
-    return null;
-  }
 }
 
 function openAIAssistant(videoId){
