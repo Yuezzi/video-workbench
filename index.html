@@ -2517,6 +2517,7 @@ let aiFlowResultData = null;
 let aiFlowMimeType = "";
 let aiFlowFile = null;     // 保存原始 File 对象（Whisper路线需要）
 let aiFlowRoute = null;    // "zhipu" | "whisper"
+let aiFlowChatHistory = []; // 对话历史（多轮追问用）
 
 // ============================================================
 // AI 一键生成工作流（v27: 字幕输入 + 可选视频画面分析）
@@ -2526,6 +2527,7 @@ const GROUP_COLORS = ["#6ba4d9", "#9b7bd4", "#d4a373"]; // 蓝/紫/棕
 function openAIGenerateFlow(videoId){
   aiFlowVideoId = videoId || null;
   aiFlowResultData = null;
+  aiFlowChatHistory = [];
 
   // 检查 DeepSeek Key（必需）
   if(!state.settings.deepseekKey){
@@ -2722,10 +2724,21 @@ async function runAIGenerateFlow(){
   `);
 
   const copyPrompt = buildCopyPrompt(analysisText, true);
+
+  // 初始化对话历史
+  aiFlowChatHistory = [
+    {role: "user", content: copyPrompt}
+  ];
+
   const copyResult = await callDeepSeekAPI(
-    [{role:"user", content: copyPrompt}],
+    aiFlowChatHistory,
     state.settings.deepseekKey
   );
+
+  // 把 AI 的回复加入历史
+  if(copyResult){
+    aiFlowChatHistory.push({role: "assistant", content: copyResult});
+  }
 
   await handleCopyResult(copyResult, subtitle);
 }
@@ -2886,16 +2899,22 @@ async function handleCopyResult(copyResult, fallbackText){
     `;
   });
   groupsHtml += '</div>';
-  showFlowResult(groupsHtml);
 
-  // 显示操作按钮
-  showFlowActions(`
-    <div class="modal-actions">
-      <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
-      <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
+  // 追问输入框
+  groupsHtml += `
+    <div style="margin-top:12px;background:rgba(79,124,255,0.06);border:1px solid rgba(79,124,255,0.15);border-radius:12px;padding:12px">
+      <div style="font-size:12px;font-weight:600;color:#4f7cff;margin-bottom:6px">💬 追问修改</div>
+      <textarea id="aiFlowRefineInput" class="fi" style="min-height:60px;resize:vertical;font-size:13px;line-height:1.5" placeholder="告诉AI哪里不满意...&#10;例如：标题太平了，改得更有画面感&#10;例如：第二组结尾换一种说法"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
+        <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px" id="aiFlowRefineBtn" onclick="refineCopy()">✏️ 追问修改</button>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
     </div>
-    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
-  `);
+  `;
+
+  showFlowResult(groupsHtml);
 }
 
 // 重新选择路线/重新生成
@@ -2908,6 +2927,127 @@ function retryFlow(){
     // 如果路线选择不存在（不太可能），直接关闭
     closeModal();
   }
+}
+
+// ============================================================
+// 追问修改（多轮对话）
+// ============================================================
+async function refineCopy(){
+  const inputEl = document.getElementById("aiFlowRefineInput");
+  if(!inputEl) return;
+  const userMessage = inputEl.value.trim();
+  if(!userMessage){
+    showToast("请输入修改要求");
+    return;
+  }
+  if(aiFlowChatHistory.length === 0){
+    showToast("请先生成文案");
+    return;
+  }
+
+  // 把用户的追问加入历史
+  const refinePrompt = userMessage + `\n\n（请基于上一轮生成的文案，只修改我指出的部分，其他保持不变。仍然输出完整的3组JSON，格式和之前一样：{"groups":[{"name":"","shortTitle":"","shortBody":"","longTitle":"","longBody":""},...]}。只输出JSON，不要加解释。）`;
+  aiFlowChatHistory.push({role: "user", content: refinePrompt});
+
+  // 禁用输入框和按钮
+  inputEl.disabled = true;
+  const btn = document.getElementById("aiFlowRefineBtn");
+  if(btn){ btn.disabled = true; btn.textContent = "正在修改..."; }
+
+  // 显示进度（在结果区域上方）
+  const progressEl = document.getElementById("aiFlowProgress");
+  if(progressEl){
+    progressEl.style.display = "block";
+    progressEl.innerHTML = `
+      <div class="ai-loading" style="padding:12px">
+        <span>DeepSeek 正在修改文案...</span>
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      </div>
+    `;
+  }
+
+  // 调用 DeepSeek（传入完整对话历史）
+  const copyResult = await callDeepSeekAPI(
+    aiFlowChatHistory,
+    state.settings.deepseekKey
+  );
+
+  // 恢复输入框和按钮
+  inputEl.disabled = false;
+  if(btn){ btn.disabled = false; btn.textContent = "✏️ 追问修改"; }
+
+  if(!copyResult){
+    if(progressEl){
+      progressEl.innerHTML = `<div style="padding:8px;text-align:center;color:var(--danger);font-size:13px">修改失败，请重试</div>`;
+    }
+    // 移除刚才加的历史
+    aiFlowChatHistory.pop();
+    return;
+  }
+
+  // 把 AI 回复加入历史
+  aiFlowChatHistory.push({role: "assistant", content: copyResult});
+
+  // 隐藏进度
+  if(progressEl) progressEl.style.display = "none";
+
+  // 解析新结果
+  const parsed = parseCopyResult(copyResult);
+  if(!parsed || !parsed.groups || parsed.groups.length === 0){
+    // 解析失败，保留旧结果，提示用户
+    showToast("AI返回格式异常，请换个说法再试");
+    // 移除刚才加的历史
+    aiFlowChatHistory.pop();
+    return;
+  }
+
+  aiFlowResultData = parsed;
+  inputEl.value = ""; // 清空输入框
+
+  // 重新渲染结果（保留追问框）
+  let groupsHtml = '<div style="margin-top:10px">';
+  // 修改提示
+  groupsHtml += `<div style="padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;font-size:12px;color:var(--green);margin-bottom:10px;text-align:center">✓ 已修改 · 第${Math.floor(aiFlowChatHistory.length/2)}轮</div>`;
+
+  parsed.groups.forEach((g, i) => {
+    const color = GROUP_COLORS[i % GROUP_COLORS.length];
+    groupsHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid ${color}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <b style="font-size:13px;color:${color}">组${i+1} · ${esc(g.name)}</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowGroup(${i})">📋 复制</button>
+        </div>
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">短版</div>
+          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.shortTitle)}</div>
+          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.shortBody)}</div>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">长版</div>
+          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.longTitle)}</div>
+          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.longBody)}</div>
+        </div>
+      </div>
+    `;
+  });
+  groupsHtml += '</div>';
+
+  // 追问输入框（保持不变，供继续追问）
+  groupsHtml += `
+    <div style="margin-top:12px;background:rgba(79,124,255,0.06);border:1px solid rgba(79,124,255,0.15);border-radius:12px;padding:12px">
+      <div style="font-size:12px;font-weight:600;color:#4f7cff;margin-bottom:6px">💬 追问修改</div>
+      <textarea id="aiFlowRefineInput" class="fi" style="min-height:60px;resize:vertical;font-size:13px;line-height:1.5" placeholder="继续告诉AI哪里不满意...&#10;例如：标题太平了，改得更有画面感"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
+        <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
+      </div>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px" id="aiFlowRefineBtn" onclick="refineCopy()">✏️ 追问修改</button>
+      <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
+    </div>
+  `;
+
+  showFlowResult(groupsHtml);
+  showToast("✓ 文案已修改");
 }
 
 // ============================================================
