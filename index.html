@@ -538,6 +538,7 @@ button{font-family:inherit;cursor:pointer;border:none;background:none;color:inhe
 .dash-empty{text-align:center;padding:30px 20px;color:var(--t2);font-size:13px}
 .dash-month-note{text-align:center;font-size:11px;color:var(--t2);margin-top:4px}
 </style>
+<script src="https://unpkg.com/@ffmpeg/ffmpeg@0.11.6/dist/ffmpeg.min.js"></script>
 </head>
 <body>
 <div class="app">
@@ -680,6 +681,7 @@ let state = {
     zhipuKey: "",   // 智谱密钥
     deepseekKey: "", // DeepSeek密钥
     aicmKey: "",     // AICodeMirror密钥
+    openaiKey: "",    // OpenAI密钥（Whisper语音转文字）
     // 云端同步配置
     supabaseUrl: "https://ycehddktfdybwraweteu.supabase.co",
     supabaseKey: "sb_publishable_go9QTtxqiBYFmvs1Vglk9g_52Io8kGM",
@@ -2311,6 +2313,7 @@ function openSettings(){
           if(s.zhipuKey) n++;
           if(s.deepseekKey) n++;
           if(s.aicmKey) n++;
+          if(s.openaiKey) n++;
           return n>0 ? n+"个AI已配置 ✓" : "未配置";
         })()}</div>
       </div>
@@ -2449,6 +2452,15 @@ function editAPIKey(){
       <input class="fi" id="aicmKeyInput" type="text" placeholder="aicodemirror.ai 获取" value="${esc(s.aicmKey||"")}">
     </div>
     
+    <div class="fg">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <label class="fl" style="margin:0">🎙️ OpenAI API Key（Whisper 语音转文字）</label>
+        <a href="https://platform.openai.com/api-keys" target="_blank" style="font-size:11px;color:#4f7cff;text-decoration:none;white-space:nowrap">获取密钥 →</a>
+      </div>
+      <input class="fi" id="openaiKeyInput" type="text" placeholder="platform.openai.com 获取" value="${esc(s.openaiKey||"")}">
+      <div style="font-size:10px;color:var(--t3);margin-top:4px;line-height:1.5">用于语音转文字路线，需要 Whisper 模型权限</div>
+    </div>
+    
     <div style="font-size:11px;color:var(--t3);margin-bottom:10px">所有密钥只存在你手机本地，不会上传到任何服务器。</div>
     <div class="modal-actions">
       <button class="btn btn-secondary" onclick="closeModal();openSettings()">取消</button>
@@ -2461,12 +2473,13 @@ function saveAPIKey(){
   state.settings.zhipuKey = document.getElementById("zhipuKeyInput").value.trim();
   state.settings.deepseekKey = document.getElementById("deepseekKeyInput").value.trim();
   state.settings.aicmKey = document.getElementById("aicmKeyInput").value.trim();
+  state.settings.openaiKey = document.getElementById("openaiKeyInput").value.trim();
   // 兼容旧字段
   state.settings.apiKey = state.settings.zhipuKey || "";
   save();
   closeModal();
   openSettings();
-  const has = state.settings.zhipuKey || state.settings.deepseekKey || state.settings.aicmKey;
+  const has = state.settings.zhipuKey || state.settings.deepseekKey || state.settings.aicmKey || state.settings.openaiKey;
   showToast(has ? "AI 助手已配置 ✓" : "已清除所有密钥");
 }
 
@@ -2482,26 +2495,32 @@ let aiFlowBase64 = null;
 let aiFlowFileName = "";
 let aiFlowResultData = null;
 let aiFlowMimeType = "";
+let aiFlowFile = null;     // 保存原始 File 对象（Whisper路线需要）
+let aiFlowRoute = null;    // "zhipu" | "whisper"
 
 // ============================================================
-// AI 一键生成工作流
+// AI 一键生成工作流（v26: 3组风格 + 语音转文字路线）
 // ============================================================
+const GROUP_COLORS = ["#6ba4d9", "#9b7bd4", "#d4a373"]; // 蓝/紫/棕
+
 function openAIGenerateFlow(videoId){
   aiFlowVideoId = videoId || null;
   aiFlowBase64 = null;
   aiFlowFileName = "";
   aiFlowResultData = null;
   aiFlowMimeType = "";
+  aiFlowFile = null;
+  aiFlowRoute = null;
 
-  // 检查密钥
-  if(!state.settings.zhipuKey || !state.settings.deepseekKey){
+  // 检查至少有 DeepSeek Key（两条路线都需要）
+  if(!state.settings.deepseekKey){
     document.getElementById("modalTitle").textContent = "🚀 AI 一键生成";
     document.getElementById("modalBody").innerHTML = `
       <div style="text-align:center;padding:20px 10px">
         <div style="font-size:40px;margin-bottom:12px">🔑</div>
-        <div style="font-size:15px;font-weight:700;color:#5a3e2b;margin-bottom:8px">未检测到 AI 密钥</div>
+        <div style="font-size:15px;font-weight:700;color:#5a3e2b;margin-bottom:8px">需要 DeepSeek API Key</div>
         <div style="font-size:13px;color:var(--t2);line-height:1.8;margin-bottom:18px">
-          请先在设置中配置智谱和 DeepSeek 的 API 密钥
+          AI 生成文案需要 DeepSeek 密钥<br>另外还需要智谱或 OpenAI 密钥（用于分析视频/语音）
         </div>
         <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
         <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">稍后再说</button>
@@ -2515,7 +2534,7 @@ function openAIGenerateFlow(videoId){
   document.getElementById("modalBody").innerHTML = `
     <div style="background:linear-gradient(135deg,rgba(79,124,255,0.1),rgba(123,92,255,0.08));border-radius:14px;padding:12px;margin-bottom:14px;font-size:12px;color:#4f7cff;line-height:1.7">
       <b style="font-size:13px">🚀 工作流</b><br>
-      上传视频 → 智谱分析 → DeepSeek 生成文案 → 自动填充
+      上传视频 → 选择路线 → AI 分析 → 生成3组文案 → 填入
     </div>
     <div class="fg">
       <label class="fl">上传视频文件</label>
@@ -2523,14 +2542,27 @@ function openAIGenerateFlow(videoId){
         <div id="aiFlowUploadHint">
           <div style="font-size:28px;margin-bottom:6px">📹</div>
           点击上传视频文件<br>
-          <span style="font-size:11px">支持 mp4 / mov / webm，建议 50MB 以内</span>
+          <span style="font-size:11px">支持 mp4 / mov / webm，智谱路线建议 50MB 内，语音路线最大 1GB</span>
         </div>
         <input type="file" id="aiFlowFileInput" accept="video/*" style="display:none">
       </div>
     </div>
-    <button class="ai-btn" id="aiFlowStartBtn" style="background:linear-gradient(135deg,#4f7cff,#7b5cff);color:#fff;border:none" onclick="runAIGenerateFlow()">
-      <span class="icon">🚀</span> 开始生成
-    </button>
+    <div id="aiFlowRoute" style="display:none">
+      <div style="font-size:13px;font-weight:600;color:#5a3e2b;margin-bottom:10px;text-align:center">选择分析路线</div>
+      <div style="display:flex;gap:10px">
+        <button class="ai-btn" style="background:linear-gradient(135deg,#6ba4d9,#5a8db8);color:#fff;border:none;flex:1;font-size:12px;padding:12px 8px" onclick="runAIGenerateFlow('zhipu')">
+          <span class="icon">📷</span> 画面分析<br>
+          <span style="font-size:10px;opacity:.85">智谱AI · 适合无语音视频</span>
+        </button>
+        <button class="ai-btn" style="background:linear-gradient(135deg,#9b7bd4,#8268c4);color:#fff;border:none;flex:1;font-size:12px;padding:12px 8px" onclick="runAIGenerateFlow('whisper')">
+          <span class="icon">🎙️</span> 语音转文字<br>
+          <span style="font-size:10px;opacity:.85">Whisper · 适合有语音视频</span>
+        </button>
+      </div>
+      <div style="font-size:10px;color:var(--t3);margin-top:6px;text-align:center;line-height:1.5">
+        ${state.settings.zhipuKey ? "✓ 智谱已配置" : "✗ 智谱未配置"} · ${state.settings.openaiKey ? "✓ OpenAI已配置" : "✗ OpenAI未配置"}
+      </div>
+    </div>
     <div id="aiFlowProgress" style="display:none"></div>
     <div id="aiFlowResult" style="display:none"></div>
     <div id="aiFlowActions" style="display:none"></div>
@@ -2546,10 +2578,7 @@ function openAIGenerateFlow(videoId){
 function handleAIFlowVideoUpload(e){
   const file = e.target.files[0];
   if(!file) return;
-  if(file.size > 50 * 1024 * 1024){
-    showToast("视频太大，建议 50MB 以内");
-    return;
-  }
+  aiFlowFile = file; // 保存原始 File 对象（Whisper 路线需要）
   aiFlowFileName = file.name;
   aiFlowMimeType = file.type || "video/mp4";
   const uploadEl = document.getElementById("aiFlowUpload");
@@ -2563,6 +2592,9 @@ function handleAIFlowVideoUpload(e){
   const reader = new FileReader();
   reader.onload = (ev)=>{
     aiFlowBase64 = ev.target.result.split(",")[1];
+    // 显示路线选择
+    const routeEl = document.getElementById("aiFlowRoute");
+    if(routeEl) routeEl.style.display = "block";
   };
   reader.readAsDataURL(file);
 }
@@ -2591,15 +2623,60 @@ function hideFlowUI(){
   if(a) a.style.display = "none";
 }
 
-async function runAIGenerateFlow(){
-  if(!aiFlowBase64){
+// ============================================================
+// 路线分发
+// ============================================================
+async function runAIGenerateFlow(route){
+  if(!aiFlowBase64 && !aiFlowFile){
     showToast("请先上传视频文件");
     return;
   }
+  aiFlowRoute = route;
 
-  // 隐藏开始按钮
-  const startBtn = document.getElementById("aiFlowStartBtn");
-  if(startBtn) startBtn.style.display = "none";
+  // 隐藏路线选择
+  const routeEl = document.getElementById("aiFlowRoute");
+  if(routeEl) routeEl.style.display = "none";
+  hideFlowUI();
+
+  if(route === 'whisper'){
+    // 检查 OpenAI Key
+    if(!state.settings.openaiKey){
+      showFlowProgress(`<div style="padding:14px;text-align:center">
+        <div style="font-size:13px;color:var(--danger);margin-bottom:10px;font-weight:600">未配置 OpenAI API Key</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:14px">语音转文字路线需要 OpenAI API Key</div>
+        <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
+      </div>`);
+      return;
+    }
+    await runWhisperFlow();
+  } else {
+    // 智谱路线检查
+    if(!state.settings.zhipuKey){
+      showFlowProgress(`<div style="padding:14px;text-align:center">
+        <div style="font-size:13px;color:var(--danger);margin-bottom:10px;font-weight:600">未配置智谱 API Key</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:14px">画面分析路线需要智谱 API Key</div>
+        <button class="btn btn-primary" style="width:100%" onclick="closeModal();openSettings();setTimeout(()=>editAPIKey(),300)">去设置</button>
+      </div>`);
+      return;
+    }
+    // 检查视频大小
+    if(aiFlowFile && aiFlowFile.size > 50 * 1024 * 1024){
+      showFlowProgress(`<div style="padding:14px;text-align:center">
+        <div style="font-size:13px;color:var(--danger);margin-bottom:8px;font-weight:600">视频太大（${(aiFlowFile.size/1024/1024).toFixed(0)}MB）</div>
+        <div style="font-size:12px;color:var(--t2);margin-bottom:10px">智谱画面分析建议 50MB 以内<br>大视频请选择「语音转文字」路线</div>
+      </div>`);
+      const routeEl2 = document.getElementById("aiFlowRoute");
+      if(routeEl2) routeEl2.style.display = "block";
+      return;
+    }
+    await runZhipuFlow();
+  }
+}
+
+// ============================================================
+// 智谱路线
+// ============================================================
+async function runZhipuFlow(){
   hideFlowUI();
 
   // 步骤1：智谱分析视频
@@ -2622,179 +2699,424 @@ async function runAIGenerateFlow(){
 
   if(!analysisResult){
     showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">视频分析失败，请检查智谱密钥或视频大小</div>`);
-    if(startBtn) startBtn.style.display = "";
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+      </div>
+    `);
     return;
   }
 
-  // 步骤2：DeepSeek 生成文案
+  // 步骤2：DeepSeek 生成3组文案
   showFlowProgress(`
     <div class="ai-loading" style="padding:16px">
-      <span>步骤 2/2 · DeepSeek 正在生成文案...</span>
+      <span>步骤 2/2 · DeepSeek 正在生成3组文案...</span>
       <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
     </div>
   `);
 
-  const copyPrompt = `你是短视频文案专家。根据以下视频分析结果，生成两个版本的文案。
-
-## 视频分析结果
-${analysisResult}
-
-## 输出规则（每次输出两个版本）
-短版：
-标题：15字以内，一句话抓住核心
-正文：1-2句话，结尾落在"人"身上
-
-长版：
-标题：20-30字，有完整信息量
-正文：3-4句话，有画面感、有叙事感，结尾落在"人"身上
-
-## 风格要求
-1. 永远不说：家人们、谁懂啊、救命、点赞关注、宝藏、绝绝子
-2. 有真实感、有画面感，不空泛煽情
-3. 结尾收在"人"身上
-
-## 输出格式（极其重要）
-必须输出**一个**JSON对象，包含4个字段，不要输出两个JSON对象，不要换行分块：
-{"shortTitle":"短版标题","shortBody":"短版正文","longTitle":"长版标题","longBody":"长版正文"}
-
-注意：
-- shortBody 是短版正文，longBody 是长版正文，字段名不能混用
-- 只输出这一个JSON，不要加任何解释文字、markdown标记或换行`;
-
+  const copyPrompt = buildCopyPrompt(analysisResult);
   const copyResult = await callDeepSeekAPI(
     [{role:"user", content: copyPrompt}],
     state.settings.deepseekKey
   );
 
-  if(!copyResult){
-    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">文案生成失败，请检查 DeepSeek 密钥</div>`);
-    if(startBtn) startBtn.style.display = "";
-    return;
-  }
+  await handleCopyResult(copyResult);
+}
 
-  // 解析 JSON 结果
-  const parsed = parseCopyResult(copyResult);
-  if(!parsed){
-    // 解析失败，显示原始输出让用户看到
-    showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--danger);font-size:13px;font-weight:600">文案格式解析失败</div>`);
-    showFlowResult(`
-      <div style="margin-top:10px">
-        <div style="font-size:12px;color:var(--t2);margin-bottom:6px">DeepSeek 原始输出（你可以手动复制）：</div>
-        <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:13px;color:var(--t3);line-height:1.6;white-space:pre-wrap;max-height:300px;overflow-y:auto">${esc(copyResult)}</div>
-        <button class="ai-gen-btn secondary" style="margin-top:8px" onclick="copyText('${esc(copyResult).replace(/'/g,"\\'")}')">📋 复制全部</button>
+// ============================================================
+// Whisper 语音转文字路线
+// ============================================================
+async function runWhisperFlow(){
+  hideFlowUI();
+
+  // 步骤1：提取音频
+  showFlowProgress(`
+    <div class="ai-loading" style="padding:16px">
+      <span>步骤 1/3 · 正在提取音频...</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div id="ffmpegProgress" style="font-size:11px;color:var(--t3);margin-top:6px">加载中...</div>
+    </div>
+  `);
+
+  let audioBlob;
+  try{
+    audioBlob = await extractAudioWithFFmpeg(aiFlowFile, (ratio) => {
+      const el = document.getElementById("ffmpegProgress");
+      if(el) el.textContent = `进度：${Math.round(ratio * 100)}%`;
+    });
+  }catch(e){
+    console.error("ffmpeg failed, trying Web Audio:", e);
+    // 降级到 Web Audio API
+    showFlowProgress(`
+      <div class="ai-loading" style="padding:16px">
+        <span>正在用备用方案提取音频...</span>
+        <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+        <div style="font-size:11px;color:var(--t3);margin-top:6px">需要实时播放视频录制，请稍候</div>
       </div>
     `);
+    try{
+      audioBlob = await extractAudioWithWebAudio(aiFlowFile);
+    }catch(e2){
+      showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">音频提取失败：${esc(e2.message||"")}</div>`);
+      showFlowActions(`
+        <div class="modal-actions">
+          <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
+          <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+        </div>
+      `);
+      return;
+    }
+  }
+
+  if(!audioBlob || audioBlob.size < 100){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">音频提取失败，可能视频没有音轨</div>`);
     showFlowActions(`
       <div class="modal-actions">
-        <button class="btn btn-secondary" style="flex:1" onclick="runAIGenerateFlow()">🔄 重新生成</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
         <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
       </div>
     `);
-    if(startBtn) startBtn.style.display = "";
+    return;
+  }
+
+  // 检查音频大小
+  if(audioBlob.size > 25 * 1024 * 1024){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">音频文件太大（${(audioBlob.size/1024/1024).toFixed(1)}MB），Whisper 限制 25MB</div>`);
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+      </div>
+    `);
+    return;
+  }
+
+  // 步骤2：Whisper 转文字
+  showFlowProgress(`
+    <div class="ai-loading" style="padding:16px">
+      <span>步骤 2/3 · 正在转文字（Whisper）...</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+      <div style="font-size:11px;color:var(--t3);margin-top:6px">音频 ${(audioBlob.size/1024/1024).toFixed(1)}MB</div>
+    </div>
+  `);
+
+  const transcript = await callWhisperAPI(audioBlob, state.settings.openaiKey);
+
+  if(!transcript || transcript.length < 5){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">语音转文字失败，请检查 OpenAI Key 或视频是否有音轨</div>`);
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+      </div>
+    `);
+    return;
+  }
+
+  // 步骤3：DeepSeek 生成3组文案
+  showFlowProgress(`
+    <div class="ai-loading" style="padding:16px">
+      <span>步骤 3/3 · DeepSeek 正在生成3组文案...</span>
+      <div class="dots"><div class="dot"></div><div class="dot"></div><div class="dot"></div></div>
+    </div>
+  `);
+
+  const copyPrompt = buildCopyPrompt(transcript, true);
+  const copyResult = await callDeepSeekAPI(
+    [{role:"user", content: copyPrompt}],
+    state.settings.deepseekKey
+  );
+
+  await handleCopyResult(copyResult, transcript);
+}
+
+// ============================================================
+// 公共：构建 DeepSeek prompt（3组风格）
+// ============================================================
+function buildCopyPrompt(analysisText, isTranscript){
+  const contextLabel = isTranscript ? "视频语音转文字结果" : "视频分析结果";
+  return `你是短视频文案专家。根据${contextLabel}，为每条视频生成3组不同风格的短版+长版文案，每次输出3组。
+
+## ${contextLabel}
+${analysisText}
+
+## 输出格式
+组1 · 白描风
+短版：标题（15字以内）+ 正文（只写画面里的动作/场景，不加判断句）
+长版：标题（20字以内）+ 正文（写连贯的动作和场景，让画面自己说话）
+
+组2 · 金句风
+短版：标题（15字以内）+ 正文（1-2句话，结尾落在一句判断/感悟上）
+长版：标题（20字以内）+ 正文（3-4句，前面叙事，最后落一句金句收尾）
+
+组3 · 叙事风
+短版：标题（15字以内）+ 正文（只写人物的一个瞬间或转折）
+长版：标题（20字以内）+ 正文（3-4句，讲一个完整的小段落：开始→动作→变化）
+
+## 通用规则
+1. 永远不说：家人们、谁懂啊、救命、点赞关注、宝藏、绝绝子
+2. 标题不用引号，除非特别想强调
+3. 禁止每篇都写"那一刻…只是…"
+4. 每条文案必须独立，不能套同一个句式
+5. 结尾尽量落在具体动作或变化上，少用抽象判断句
+
+## 输出要求（极其重要）
+必须输出**一个**JSON对象，包含groups数组，每组有name, shortTitle, shortBody, longTitle, longBody：
+{"groups":[{"name":"白描风","shortTitle":"","shortBody":"","longTitle":"","longBody":""},{"name":"金句风","shortTitle":"","shortBody":"","longTitle":"","longBody":""},{"name":"叙事风","shortTitle":"","shortBody":"","longTitle":"","longBody":""}]}
+
+只输出这一个JSON，不要加任何解释文字、markdown标记。`;
+}
+
+// ============================================================
+// 公共：处理 DeepSeek 返回结果（解析+展示）
+// ============================================================
+async function handleCopyResult(copyResult, fallbackText){
+  if(!copyResult){
+    showFlowProgress(`<div style="padding:14px;text-align:center;color:var(--danger);font-size:13px">文案生成失败，请检查 DeepSeek 密钥</div>`);
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+      </div>
+    `);
+    return;
+  }
+
+  // 解析结果
+  const parsed = parseCopyResult(copyResult);
+  if(!parsed || !parsed.groups || parsed.groups.length === 0){
+    // 解析失败，显示原始输出
+    showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--danger);font-size:13px;font-weight:600">文案格式解析失败</div>`);
+    let fallbackHtml = `
+      <div style="margin-top:10px">
+        <div style="font-size:12px;color:var(--t2);margin-bottom:6px">DeepSeek 原始输出（你可以手动复制）：</div>
+        <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:13px;color:var(--t3);line-height:1.6;white-space:pre-wrap;max-height:300px;overflow-y:auto">${esc(copyResult)}</div>
+    `;
+    if(fallbackText){
+      fallbackHtml += `
+        <div style="font-size:12px;color:var(--t2);margin:10px 0 6px">语音转文字结果：</div>
+        <div style="background:var(--bg);border-radius:10px;padding:10px;font-size:13px;color:var(--t3);line-height:1.6;white-space:pre-wrap;max-height:200px;overflow-y:auto">${esc(fallbackText)}</div>
+      `;
+    }
+    fallbackHtml += `</div>`;
+    showFlowResult(fallbackHtml);
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新选择</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="closeModal()">关闭</button>
+      </div>
+    `);
     return;
   }
 
   aiFlowResultData = parsed;
 
-  // 隐藏进度
-  showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--green);font-size:13px;font-weight:600">✓ 生成完成</div>`);
-
   // 显示结果
-  showFlowResult(`
-    <div style="margin-top:10px">
-      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <b style="font-size:13px;color:#5a3e2b">短版</b>
-          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowText('short')">📋 复制</button>
+  showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--green);font-size:13px;font-weight:600">✓ 生成完成 · ${parsed.groups.length}组文案</div>`);
+
+  // 渲染3组文案
+  let groupsHtml = '<div style="margin-top:10px">';
+  parsed.groups.forEach((g, i) => {
+    const color = GROUP_COLORS[i % GROUP_COLORS.length];
+    groupsHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid ${color}">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
+          <b style="font-size:13px;color:${color}">组${i+1} · ${esc(g.name)}</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowGroup(${i})">📋 复制</button>
         </div>
-        <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:4px">${esc(parsed.shortTitle)}</div>
-        <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(parsed.shortBody)}</div>
-      </div>
-      <div style="background:var(--bg);border-radius:12px;padding:12px">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
-          <b style="font-size:13px;color:#5a3e2b">长版</b>
-          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowText('long')">📋 复制</button>
+        <div style="margin-bottom:8px">
+          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">短版</div>
+          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.shortTitle)}</div>
+          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.shortBody)}</div>
         </div>
-        <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:4px">${esc(parsed.longTitle)}</div>
-        <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(parsed.longBody)}</div>
+        <div>
+          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">长版</div>
+          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.longTitle)}</div>
+          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.longBody)}</div>
+        </div>
       </div>
-    </div>
-  `);
+    `;
+  });
+  groupsHtml += '</div>';
+  showFlowResult(groupsHtml);
 
   // 显示操作按钮
   showFlowActions(`
     <div class="modal-actions">
-      <button class="btn btn-secondary" style="flex:1" onclick="runAIGenerateFlow()">🔄 重新生成</button>
+      <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
       <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
     </div>
     <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
   `);
 }
 
+// 重新选择路线/重新生成
+function retryFlow(){
+  hideFlowUI();
+  const routeEl = document.getElementById("aiFlowRoute");
+  if(routeEl){
+    routeEl.style.display = "block";
+  } else {
+    // 如果路线选择不存在（不太可能），直接关闭
+    closeModal();
+  }
+}
+
+// ============================================================
+// 解析 DeepSeek 返回（支持3组格式 + 向后兼容）
+// ============================================================
 function parseCopyResult(text){
   if(!text) return null;
   let cleaned = text.trim();
-  // 去掉 markdown 代码块
   cleaned = cleaned.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
 
-  // 方案1：尝试提取 JSON（支持多个 JSON 对象合并）
+  // 方案1：整体 JSON.parse
   try{
-    // 先尝试整体解析
     const obj = JSON.parse(cleaned);
     if(obj && typeof obj === "object"){
-      return normalizeCopyObj(obj);
+      // 新格式：有 groups 数组
+      if(obj.groups && Array.isArray(obj.groups) && obj.groups.length > 0){
+        return { groups: normalizeCopyGroups(obj.groups) };
+      }
+      // 旧格式：扁平对象
+      const legacy = normalizeCopyObj(obj);
+      if(legacy) return legacyToGroups(legacy);
     }
   }catch(e){ /* 不是单个 JSON，继续 */ }
 
-  // 尝试提取所有 {...} 块，逐个解析后合并
+  // 方案2：提取 JSON 块
   try{
     const blocks = extractJsonBlocks(cleaned);
-    if(blocks.length >= 2){
-      // DeepSeek 返回两个对象的情况：第一个是短版，第二个是长版
+    if(blocks.length >= 1){
+      // 尝试第一个块
       const obj1 = JSON.parse(blocks[0]);
-      const obj2 = JSON.parse(blocks[1]);
-      // 合并：第二个对象里 shortBody 实际是 longBody
-      const merged = {};
-      // 从第一个对象取短版
-      merged.shortTitle = obj1.shortTitle || obj1.title || "";
-      merged.shortBody = obj1.shortBody || obj1.body || obj1.content || "";
-      // 从第二个对象取长版（处理字段名错误）
-      merged.longTitle = obj2.longTitle || obj2.title || obj1.longTitle || "";
-      // 关键修复：第二个对象的 shortBody 实际是 longBody
-      merged.longBody = obj2.longBody || obj2.body || obj2.content || obj2.shortBody || "";
-      // 如果第一个对象也有长版字段，优先用第二个
-      if(!merged.longTitle && obj1.longTitle) merged.longTitle = obj1.longTitle;
-      if(!merged.longBody && obj1.longBody) merged.longBody = obj1.longBody;
-      if(merged.shortTitle || merged.shortBody || merged.longTitle || merged.longBody){
-        return {
-          shortTitle: String(merged.shortTitle || ""),
-          shortBody: String(merged.shortBody || ""),
-          longTitle: String(merged.longTitle || merged.shortTitle || ""),
-          longBody: String(merged.longBody || merged.shortBody || "")
-        };
+      if(obj1.groups && Array.isArray(obj1.groups)){
+        return { groups: normalizeCopyGroups(obj1.groups) };
       }
+      // 多块合并（旧格式兼容）
+      if(blocks.length >= 2){
+        const obj2 = JSON.parse(blocks[1]);
+        const merged = {};
+        merged.shortTitle = obj1.shortTitle || obj1.title || "";
+        merged.shortBody = obj1.shortBody || obj1.body || obj1.content || "";
+        merged.longTitle = obj2.longTitle || obj2.title || obj1.longTitle || "";
+        merged.longBody = obj2.longBody || obj2.body || obj2.content || obj2.shortBody || "";
+        if(!merged.longTitle && obj1.longTitle) merged.longTitle = obj1.longTitle;
+        if(!merged.longBody && obj1.longBody) merged.longBody = obj1.longBody;
+        if(merged.shortTitle || merged.shortBody || merged.longTitle || merged.longBody){
+          return legacyToGroups(merged);
+        }
+      }
+      // 单块旧格式
+      const legacy = normalizeCopyObj(obj1);
+      if(legacy) return legacyToGroups(legacy);
     }
-    // 单个 JSON 块
-    if(blocks.length === 1){
-      const obj = JSON.parse(blocks[0]);
-      return normalizeCopyObj(obj);
-    }
-  }catch(e){ /* JSON 提取失败，走方案2 */ }
+  }catch(e){ /* JSON 提取失败，走方案3 */ }
 
-  // 方案2：从纯文本提取（DeepSeek 可能不按 JSON 格式返回）
-  // 尝试匹配"短版"和"长版"标记
-  const lines = cleaned.split("\n");
-  let shortTitle = "", shortBody = "", longTitle = "", longBody = "";
+  // 方案3：纯文本提取（按"组N · 风格名"标记解析）
+  const groups = parseTextGroups(cleaned);
+  if(groups && groups.length > 0){
+    return { groups: normalizeCopyGroups(groups) };
+  }
+
+  // 方案4：旧格式文本提取（短版/长版标记）
+  const legacyText = parseLegacyText(cleaned);
+  if(legacyText){
+    return legacyToGroups(legacyText);
+  }
+
+  // 方案5：兜底 - 整体当一个组
+  if(cleaned.length > 5){
+    const firstLine = cleaned.split("\n").find(l=>l.trim().length > 0) || "";
+    return legacyToGroups({
+      shortTitle: firstLine.substring(0, 20),
+      shortBody: cleaned,
+      longTitle: firstLine.substring(0, 30),
+      longBody: cleaned
+    });
+  }
+
+  console.error("parseCopyResult: all methods failed, raw:", text.substring(0, 300));
+  return null;
+}
+
+// 解析"组N · 风格名"格式的纯文本
+function parseTextGroups(text){
+  const lines = text.split("\n");
+  const groups = [];
+  let currentGroup = null;
   let mode = ""; // "short" | "long"
 
   for(let i=0; i<lines.length; i++){
     const line = lines[i].trim();
     if(!line) continue;
 
+    // 检测"组N · 风格名"
+    const groupMatch = line.match(/^组\s*(\d+)\s*[·•]\s*(.+)/);
+    if(groupMatch){
+      if(currentGroup) groups.push(currentGroup);
+      currentGroup = { name: groupMatch[2].trim(), shortTitle:"", shortBody:"", longTitle:"", longBody:"" };
+      mode = "";
+      continue;
+    }
+
+    if(!currentGroup) continue;
+
     // 检测短版/长版标记
+    if(line.match(/^短版[:：]/)){
+      mode = "short";
+      const after = line.replace(/^短版[:：]\s*/, "");
+      if(after && after.length < 30 && !after.match(/^(标题|正文)/)) currentGroup.shortTitle = after;
+      continue;
+    }
+    if(line.match(/^长版[:：]/)){
+      mode = "long";
+      const after = line.replace(/^长版[:：]\s*/, "");
+      if(after && after.length < 40 && !after.match(/^(标题|正文)/)) currentGroup.longTitle = after;
+      continue;
+    }
+
+    // 检测标题/正文标记
+    if(line.match(/^标题[:：]/)){
+      const val = line.replace(/^标题[:：]\s*/, "");
+      if(mode === "long") currentGroup.longTitle = val;
+      else currentGroup.shortTitle = val;
+      continue;
+    }
+    if(line.match(/^正文[:：]/)){
+      const val = line.replace(/^正文[:：]\s*/, "");
+      if(mode === "long") currentGroup.longBody = val;
+      else if(mode === "short") currentGroup.shortBody = val;
+      continue;
+    }
+
+    // 纯文本行
+    if(mode === "short"){
+      if(!currentGroup.shortTitle && line.length <= 20) currentGroup.shortTitle = line;
+      else currentGroup.shortBody = currentGroup.shortBody ? currentGroup.shortBody + line : line;
+    } else if(mode === "long"){
+      if(!currentGroup.longTitle && line.length <= 30) currentGroup.longTitle = line;
+      else currentGroup.longBody = currentGroup.longBody ? currentGroup.longBody + line : line;
+    }
+  }
+  if(currentGroup) groups.push(currentGroup);
+  return groups.length > 0 ? groups : null;
+}
+
+// 旧格式纯文本提取
+function parseLegacyText(cleaned){
+  const lines = cleaned.split("\n");
+  let shortTitle = "", shortBody = "", longTitle = "", longBody = "";
+  let mode = "";
+
+  for(let i=0; i<lines.length; i++){
+    const line = lines[i].trim();
+    if(!line) continue;
+
     if(line.match(/^(短版|短文案|##\s*短版)/)){
       mode = "short";
-      // 同行可能有标题
       const afterColon = line.replace(/^(短版|短文案|##\s*短版)[:：\s]*/, "");
       if(afterColon && afterColon.length < 30) shortTitle = afterColon;
       continue;
@@ -2805,8 +3127,6 @@ function parseCopyResult(text){
       if(afterColon && afterColon.length < 40) longTitle = afterColon;
       continue;
     }
-
-    // 检测标题标记
     if(line.match(/^(标题|短标题|长标题)[:：]/)){
       const val = line.replace(/^(标题|短标题|长标题)[:：]\s*/, "");
       if(mode === "long" || line.startsWith("长标题")) longTitle = val;
@@ -2820,44 +3140,53 @@ function parseCopyResult(text){
       else if(mode === "short") shortBody = val;
       continue;
     }
-
-    // 纯文本行，根据当前 mode 归类
     if(mode === "short"){
-      if(!shortTitle && line.length <= 20){ shortTitle = line; }
-      else { shortBody = shortBody ? shortBody + line : line; }
+      if(!shortTitle && line.length <= 20) shortTitle = line;
+      else shortBody = shortBody ? shortBody + line : line;
     } else if(mode === "long"){
-      if(!longTitle && line.length <= 30){ longTitle = line; }
-      else { longBody = longBody ? longBody + line : line; }
+      if(!longTitle && line.length <= 30) longTitle = line;
+      else longBody = longBody ? longBody + line : line;
     }
   }
 
-  // 如果提取到了内容，返回
   if(shortTitle || shortBody || longTitle || longBody){
     return {
-      shortTitle: shortTitle || "（短版标题）",
+      shortTitle: shortTitle || "",
       shortBody: shortBody || "",
-      longTitle: longTitle || shortTitle || "（长版标题）",
+      longTitle: longTitle || shortTitle || "",
       longBody: longBody || shortBody || ""
     };
   }
-
-  // 方案3：如果没有任何标记，把整个文本当短版正文
-  if(cleaned.length > 5){
-    // 取第一行做标题
-    const firstLine = cleaned.split("\n").find(l=>l.trim().length > 0) || "";
-    return {
-      shortTitle: firstLine.substring(0, 20),
-      shortBody: cleaned,
-      longTitle: firstLine.substring(0, 30),
-      longBody: cleaned
-    };
-  }
-
-  console.error("parseCopyResult: all methods failed, raw:", text.substring(0, 300));
   return null;
 }
 
-// 提取文本中所有顶层 {...} JSON 块（正确处理嵌套大括号）
+// 标准化 groups 数组
+function normalizeCopyGroups(arr){
+  if(!Array.isArray(arr)) return [];
+  return arr.map(g => ({
+    name: String(g.name || "默认风格"),
+    shortTitle: String(g.shortTitle || g.title || g.short_title || ""),
+    shortBody: String(g.shortBody || g.body || g.content || g.short_body || ""),
+    longTitle: String(g.longTitle || g.long_title || g.title || ""),
+    longBody: String(g.longBody || g.long_body || g.body || g.content || "")
+  }));
+}
+
+// 旧格式转 groups 格式
+function legacyToGroups(legacy){
+  if(!legacy) return null;
+  return {
+    groups: [{
+      name: "默认风格",
+      shortTitle: String(legacy.shortTitle || ""),
+      shortBody: String(legacy.shortBody || ""),
+      longTitle: String(legacy.longTitle || legacy.shortTitle || ""),
+      longBody: String(legacy.longBody || legacy.shortBody || "")
+    }]
+  };
+}
+
+// 提取文本中所有顶层 {...} JSON 块
 function extractJsonBlocks(text){
   const blocks = [];
   let i = 0;
@@ -2889,7 +3218,7 @@ function extractJsonBlocks(text){
   return blocks;
 }
 
-// 将单个 JSON 对象标准化为文案结果
+// 标准化单个 JSON 对象为文案结果（旧格式兼容）
 function normalizeCopyObj(obj){
   if(!obj || typeof obj !== "object") return null;
   return {
@@ -2909,44 +3238,49 @@ function copyText(text){
   document.body.removeChild(ta);
 }
 
-function copyFlowText(type){
-  if(!aiFlowResultData) return;
-  let text = "";
-  if(type === "short"){
-    text = `短版：${aiFlowResultData.shortTitle} ${aiFlowResultData.shortBody}`;
-  } else {
-    text = `长版：${aiFlowResultData.longTitle} ${aiFlowResultData.longBody}`;
-  }
-  const ta = document.createElement("textarea");
-  ta.value = text;
-  document.body.appendChild(ta);
-  ta.select();
-  try{ document.execCommand("copy"); showToast("已复制"); }catch(e){ showToast("复制失败"); }
-  document.body.removeChild(ta);
+// 复制指定组
+function copyFlowGroup(index){
+  if(!aiFlowResultData || !aiFlowResultData.groups || !aiFlowResultData.groups[index]) return;
+  const g = aiFlowResultData.groups[index];
+  const text = `组${index+1} · ${g.name}\n短版：${g.shortTitle} ${g.shortBody}\n长版：${g.longTitle} ${g.longBody}`;
+  copyText(text);
 }
 
+// 填入视频：弹出组选择
 function fillAIGenerateResult(){
-  if(!aiFlowResultData){
+  if(!aiFlowResultData || !aiFlowResultData.groups || aiFlowResultData.groups.length === 0){
     showToast("没有可填充的结果");
     return;
   }
-  const d = aiFlowResultData;
-  // 填标题
-  const titleEl = document.getElementById("vTitle");
-  // 填备注
-  const noteEl = document.getElementById("vNote");
-  const fullText = `短版：${d.shortTitle} ${d.shortBody}\n\n长版：${d.longTitle} ${d.longBody}`;
 
-  // 如果视频编辑弹窗的标题/备注字段不存在（弹窗已关闭）
+  let selectHtml = '<div style="margin-bottom:10px;font-size:13px;font-weight:600;color:#5a3e2b;text-align:center">选择要填入的文案组</div>';
+  selectHtml += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
+  aiFlowResultData.groups.forEach((g, i) => {
+    const color = GROUP_COLORS[i % GROUP_COLORS.length];
+    selectHtml += `
+      <button class="btn" style="flex:1;min-width:80px;background:${color}15;border:1.5px solid ${color}40;color:${color};font-size:13px;padding:12px 8px;border-radius:12px;cursor:pointer" onclick="doFillVideo(${i})">
+        <div style="font-size:11px;opacity:.7">组${i+1}</div>
+        <div style="font-weight:700">${esc(g.name)}</div>
+      </button>
+    `;
+  });
+  selectHtml += '</div>';
+  selectHtml += '<button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="cancelFillVideo()">取消</button>';
+
+  showFlowActions(selectHtml);
+}
+
+// 执行填入
+function doFillVideo(groupIndex){
+  if(!aiFlowResultData || !aiFlowResultData.groups || !aiFlowResultData.groups[groupIndex]) return;
+  const g = aiFlowResultData.groups[groupIndex];
+  const titleEl = document.getElementById("vTitle");
+  const noteEl = document.getElementById("vNote");
+  const fullText = `组${groupIndex+1} · ${g.name}\n短版：${g.shortTitle} ${g.shortBody}\n长版：${g.longTitle} ${g.longBody}`;
+
+  // 弹窗未打开
   if(!titleEl || !noteEl){
-    // 复制到剪贴板，让用户自己粘贴
-    const ta = document.createElement("textarea");
-    ta.value = fullText;
-    document.body.appendChild(ta);
-    ta.select();
-    try{ document.execCommand("copy"); }catch(e){}
-    document.body.removeChild(ta);
-    // 在弹窗里显示提示
+    copyText(fullText);
     showFlowResult(`
       <div style="margin-top:10px">
         <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:14px;text-align:center">
@@ -2955,42 +3289,205 @@ function fillAIGenerateResult(){
           <div style="font-size:12px;color:var(--t2);line-height:1.6">视频编辑弹窗未打开，文案已复制。<br>请打开视频编辑弹窗后粘贴到备注栏。</div>
         </div>
         <div style="background:var(--bg);border-radius:12px;padding:12px;margin-top:10px">
-          <div style="font-size:12px;color:var(--t2);margin-bottom:4px">短版：</div>
-          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(d.shortTitle)}</div>
-          <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:10px">${esc(d.shortBody)}</div>
-          <div style="font-size:12px;color:var(--t2);margin-bottom:4px">长版：</div>
-          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(d.longTitle)}</div>
-          <div style="font-size:12px;color:var(--t3);line-height:1.6">${esc(d.longBody)}</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:4px">组${groupIndex+1} · ${esc(g.name)}：</div>
+          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.shortTitle)}</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:8px">${esc(g.shortBody)}</div>
+          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.longTitle)}</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.6">${esc(g.longBody)}</div>
         </div>
       </div>
     `);
     showFlowActions(`
-      <div class="modal-actions">
-        <button class="btn btn-secondary" style="flex:1" onclick="copyFlowText('short')">📋 复制短版</button>
-        <button class="btn btn-secondary" style="flex:1" onclick="copyFlowText('long')">📋 复制长版</button>
-      </div>
-      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
+      <button class="btn btn-primary" style="width:100%" onclick="closeModal()">关闭</button>
     `);
-    showToast("文案已复制到剪贴板 📋");
     return;
   }
 
-  // 正常情况：填入标题和备注
-  titleEl.value = d.shortTitle;
+  // 正常填入
+  titleEl.value = g.shortTitle;
   noteEl.value = fullText;
-  // 高亮提示
   titleEl.style.transition = "background 0.3s";
   noteEl.style.transition = "background 0.3s";
   titleEl.style.background = "rgba(34,197,94,0.15)";
   noteEl.style.background = "rgba(34,197,94,0.15)";
-  setTimeout(()=>{
-    titleEl.style.background = "";
-    noteEl.style.background = "";
-  }, 2000);
+  setTimeout(()=>{ titleEl.style.background = ""; noteEl.style.background = ""; }, 2000);
 
-  // 关闭 AI 弹窗，回到视频编辑弹窗
   closeModal();
-  showToast("✓ 已填入标题和备注，请在视频编辑弹窗中查看");
+  showToast(`✓ 已填入标题和备注（组${groupIndex+1} · ${g.name}）`);
+}
+
+function cancelFillVideo(){
+  showFlowActions(`
+    <div class="modal-actions">
+      <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
+      <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
+    </div>
+    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
+  `);
+}
+
+// ============================================================
+// ffmpeg.wasm 音频提取
+// ============================================================
+let ffmpegInstance = null;
+let ffmpegLoading = false;
+
+async function loadFFmpeg(){
+  if(ffmpegInstance) return ffmpegInstance;
+  if(ffmpegLoading) {
+    // 等待正在加载的实例
+    while(ffmpegLoading){ await new Promise(r=>setTimeout(r, 200)); }
+    return ffmpegInstance;
+  }
+  ffmpegLoading = true;
+  try{
+    if(typeof FFmpeg === "undefined"){
+      throw new Error("ffmpeg.wasm 未加载，请检查网络");
+    }
+    const { createFFmpeg } = FFmpeg;
+    ffmpegInstance = createFFmpeg({
+      log: false,
+      corePath: "https://unpkg.com/@ffmpeg/core@0.11.0/dist/ffmpeg-core.js"
+    });
+    await ffmpegInstance.load();
+    return ffmpegInstance;
+  }catch(e){
+    ffmpegLoading = false;
+    throw e;
+  }finally{
+    ffmpegLoading = false;
+  }
+}
+
+async function extractAudioWithFFmpeg(videoFile, onProgress){
+  const ffmpeg = await loadFFmpeg();
+  const ext = videoFile.name.split(".").pop() || "mp4";
+  const inputName = "input." + ext;
+  const outputName = "output.mp3";
+
+  // 写入文件
+  const fileData = await new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(new Uint8Array(e.target.result));
+    reader.readAsArrayBuffer(videoFile);
+  });
+  ffmpeg.FS("writeFile", inputName, fileData);
+
+  // 进度
+  ffmpeg.setProgress(({ ratio }) => {
+    if(onProgress && ratio > 0 && ratio < 1) onProgress(ratio);
+  });
+
+  // 提取音频：mp3, 16kHz, mono, 32kbps
+  await ffmpeg.run("-i", inputName, "-vn", "-acodec", "libmp3lame", "-ar", "16000", "-ac", "1", "-b:a", "32k", outputName);
+
+  const data = ffmpeg.FS("readFile", outputName);
+  const blob = new Blob([data.buffer], { type: "audio/mp3" });
+
+  // 清理
+  try{ ffmpeg.FS("unlink", inputName); }catch(e){}
+  try{ ffmpeg.FS("unlink", outputName); }catch(e){}
+
+  return blob;
+}
+
+// 降级方案：Web Audio API 实时录制
+async function extractAudioWithWebAudio(videoFile){
+  return new Promise((resolve, reject) => {
+    const video = document.createElement("video");
+    video.src = URL.createObjectURL(videoFile);
+    video.muted = false;
+    video.preload = "auto";
+
+    let audioContext, source, dest, recorder;
+    const chunks = [];
+
+    video.addEventListener("loadedmetadata", () => {
+      try{
+        audioContext = new (window.AudioContext || window.webkitAudioContext)();
+        source = audioContext.createMediaElementSource(video);
+        dest = audioContext.createMediaStreamDestination();
+        source.connect(dest);
+        source.connect(audioContext.destination); // 让用户听到
+
+        recorder = new MediaRecorder(dest.stream, { mimeType: "audio/webm;codecs=opus" });
+        recorder.ondataavailable = e => { if(e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = () => {
+          const blob = new Blob(chunks, { type: "audio/webm" });
+          URL.revokeObjectURL(video.src);
+          resolve(blob);
+        };
+
+        recorder.start();
+        video.play();
+      }catch(e){
+        URL.revokeObjectURL(video.src);
+        reject(e);
+      }
+    });
+
+    video.addEventListener("ended", () => {
+      if(recorder && recorder.state !== "inactive") recorder.stop();
+      if(audioContext) audioContext.close();
+    });
+
+    video.addEventListener("error", () => {
+      URL.revokeObjectURL(video.src);
+      reject(new Error("视频加载失败"));
+    });
+
+    // 超时保护（最多10分钟）
+    setTimeout(() => {
+      if(recorder && recorder.state !== "inactive"){
+        recorder.stop();
+        if(audioContext) audioContext.close();
+      }
+    }, 10 * 60 * 1000);
+  });
+}
+
+// ============================================================
+// Whisper API 调用
+// ============================================================
+async function callWhisperAPI(audioBlob, apiKey){
+  if(!apiKey){
+    showToast("请先配置 OpenAI API Key");
+    return null;
+  }
+  if(audioBlob.size > 25 * 1024 * 1024){
+    showToast("音频文件太大（超过25MB）");
+    return null;
+  }
+
+  try{
+    const formData = new FormData();
+    const fileName = audioBlob.type.includes("mp3") ? "audio.mp3" : "audio.webm";
+    formData.append("file", audioBlob, fileName);
+    formData.append("model", "whisper-1");
+    formData.append("response_format", "text");
+    formData.append("language", "zh");
+
+    const resp = await fetch("https://api.openai.com/v1/audio/transcriptions", {
+      method: "POST",
+      headers: { "Authorization": "Bearer " + apiKey },
+      body: formData
+    });
+
+    if(!resp.ok){
+      const errText = await resp.text();
+      console.error("Whisper API error:", resp.status, errText);
+      if(resp.status === 401) showToast("OpenAI API Key 无效");
+      else if(resp.status === 413) showToast("音频文件太大");
+      else showToast("语音转文字失败：" + resp.status);
+      return null;
+    }
+
+    return await resp.text();
+  }catch(e){
+    console.error(e);
+    showToast("网络错误：" + e.message);
+    return null;
+  }
 }
 
 function openAIAssistant(videoId){
