@@ -2653,9 +2653,13 @@ ${analysisResult}
 2. 有真实感、有画面感，不空泛煽情
 3. 结尾收在"人"身上
 
-## 输出格式
-请严格按以下 JSON 格式输出，不要加任何其他内容：
-{"shortTitle":"短版标题","shortBody":"短版正文","longTitle":"长版标题","longBody":"长版正文"}`;
+## 输出格式（极其重要）
+必须输出**一个**JSON对象，包含4个字段，不要输出两个JSON对象，不要换行分块：
+{"shortTitle":"短版标题","shortBody":"短版正文","longTitle":"长版标题","longBody":"长版正文"}
+
+注意：
+- shortBody 是短版正文，longBody 是长版正文，字段名不能混用
+- 只输出这一个JSON，不要加任何解释文字、markdown标记或换行`;
 
   const copyResult = await callDeepSeekAPI(
     [{role:"user", content: copyPrompt}],
@@ -2733,32 +2737,49 @@ function parseCopyResult(text){
   // 去掉 markdown 代码块
   cleaned = cleaned.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
 
-  // 方案1：尝试提取 JSON
+  // 方案1：尝试提取 JSON（支持多个 JSON 对象合并）
   try{
-    const start = cleaned.indexOf("{");
-    const end = cleaned.lastIndexOf("}");
-    if(start >= 0 && end > start){
-      const jsonStr = cleaned.substring(start, end + 1);
-      const obj = JSON.parse(jsonStr);
-      if(obj.shortTitle !== undefined && obj.shortBody !== undefined && obj.longTitle !== undefined && obj.longBody !== undefined){
+    // 先尝试整体解析
+    const obj = JSON.parse(cleaned);
+    if(obj && typeof obj === "object"){
+      return normalizeCopyObj(obj);
+    }
+  }catch(e){ /* 不是单个 JSON，继续 */ }
+
+  // 尝试提取所有 {...} 块，逐个解析后合并
+  try{
+    const blocks = extractJsonBlocks(cleaned);
+    if(blocks.length >= 2){
+      // DeepSeek 返回两个对象的情况：第一个是短版，第二个是长版
+      const obj1 = JSON.parse(blocks[0]);
+      const obj2 = JSON.parse(blocks[1]);
+      // 合并：第二个对象里 shortBody 实际是 longBody
+      const merged = {};
+      // 从第一个对象取短版
+      merged.shortTitle = obj1.shortTitle || obj1.title || "";
+      merged.shortBody = obj1.shortBody || obj1.body || obj1.content || "";
+      // 从第二个对象取长版（处理字段名错误）
+      merged.longTitle = obj2.longTitle || obj2.title || obj1.longTitle || "";
+      // 关键修复：第二个对象的 shortBody 实际是 longBody
+      merged.longBody = obj2.longBody || obj2.body || obj2.content || obj2.shortBody || "";
+      // 如果第一个对象也有长版字段，优先用第二个
+      if(!merged.longTitle && obj1.longTitle) merged.longTitle = obj1.longTitle;
+      if(!merged.longBody && obj1.longBody) merged.longBody = obj1.longBody;
+      if(merged.shortTitle || merged.shortBody || merged.longTitle || merged.longBody){
         return {
-          shortTitle: String(obj.shortTitle || ""),
-          shortBody: String(obj.shortBody || ""),
-          longTitle: String(obj.longTitle || ""),
-          longBody: String(obj.longBody || "")
+          shortTitle: String(merged.shortTitle || ""),
+          shortBody: String(merged.shortBody || ""),
+          longTitle: String(merged.longTitle || merged.shortTitle || ""),
+          longBody: String(merged.longBody || merged.shortBody || "")
         };
       }
     }
-    const obj = JSON.parse(cleaned);
-    if(obj.shortTitle !== undefined){
-      return {
-        shortTitle: String(obj.shortTitle || ""),
-        shortBody: String(obj.shortBody || ""),
-        longTitle: String(obj.longTitle || ""),
-        longBody: String(obj.longBody || "")
-      };
+    // 单个 JSON 块
+    if(blocks.length === 1){
+      const obj = JSON.parse(blocks[0]);
+      return normalizeCopyObj(obj);
     }
-  }catch(e){ /* JSON 解析失败，走方案2 */ }
+  }catch(e){ /* JSON 提取失败，走方案2 */ }
 
   // 方案2：从纯文本提取（DeepSeek 可能不按 JSON 格式返回）
   // 尝试匹配"短版"和"长版"标记
@@ -2836,6 +2857,49 @@ function parseCopyResult(text){
   return null;
 }
 
+// 提取文本中所有顶层 {...} JSON 块（正确处理嵌套大括号）
+function extractJsonBlocks(text){
+  const blocks = [];
+  let i = 0;
+  while(i < text.length){
+    if(text[i] === "{"){
+      let depth = 0;
+      let start = i;
+      let inString = false;
+      let escape = false;
+      while(i < text.length){
+        const ch = text[i];
+        if(escape){ escape = false; i++; continue; }
+        if(ch === "\\"){ escape = true; i++; continue; }
+        if(ch === '"'){ inString = !inString; i++; continue; }
+        if(inString){ i++; continue; }
+        if(ch === "{") depth++;
+        if(ch === "}"){
+          depth--;
+          if(depth === 0){
+            blocks.push(text.substring(start, i + 1));
+            break;
+          }
+        }
+        i++;
+      }
+    }
+    i++;
+  }
+  return blocks;
+}
+
+// 将单个 JSON 对象标准化为文案结果
+function normalizeCopyObj(obj){
+  if(!obj || typeof obj !== "object") return null;
+  return {
+    shortTitle: String(obj.shortTitle || obj.title || obj.short_title || ""),
+    shortBody: String(obj.shortBody || obj.body || obj.content || obj.short_body || ""),
+    longTitle: String(obj.longTitle || obj.long_title || obj.title || ""),
+    longBody: String(obj.longBody || obj.long_body || obj.body || obj.content || "")
+  };
+}
+
 function copyText(text){
   const ta = document.createElement("textarea");
   ta.value = text;
@@ -2869,14 +2933,64 @@ function fillAIGenerateResult(){
   const d = aiFlowResultData;
   // 填标题
   const titleEl = document.getElementById("vTitle");
-  if(titleEl) titleEl.value = d.shortTitle;
   // 填备注
   const noteEl = document.getElementById("vNote");
-  if(noteEl){
-    noteEl.value = `短版：${d.shortTitle} ${d.shortBody}\n\n长版：${d.longTitle} ${d.longBody}`;
+  const fullText = `短版：${d.shortTitle} ${d.shortBody}\n\n长版：${d.longTitle} ${d.longBody}`;
+
+  // 如果视频编辑弹窗的标题/备注字段不存在（弹窗已关闭）
+  if(!titleEl || !noteEl){
+    // 复制到剪贴板，让用户自己粘贴
+    const ta = document.createElement("textarea");
+    ta.value = fullText;
+    document.body.appendChild(ta);
+    ta.select();
+    try{ document.execCommand("copy"); }catch(e){}
+    document.body.removeChild(ta);
+    // 在弹窗里显示提示
+    showFlowResult(`
+      <div style="margin-top:10px">
+        <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:14px;text-align:center">
+          <div style="font-size:24px;margin-bottom:6px">📋</div>
+          <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px">文案已复制到剪贴板</div>
+          <div style="font-size:12px;color:var(--t2);line-height:1.6">视频编辑弹窗未打开，文案已复制。<br>请打开视频编辑弹窗后粘贴到备注栏。</div>
+        </div>
+        <div style="background:var(--bg);border-radius:12px;padding:12px;margin-top:10px">
+          <div style="font-size:12px;color:var(--t2);margin-bottom:4px">短版：</div>
+          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(d.shortTitle)}</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:10px">${esc(d.shortBody)}</div>
+          <div style="font-size:12px;color:var(--t2);margin-bottom:4px">长版：</div>
+          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(d.longTitle)}</div>
+          <div style="font-size:12px;color:var(--t3);line-height:1.6">${esc(d.longBody)}</div>
+        </div>
+      </div>
+    `);
+    showFlowActions(`
+      <div class="modal-actions">
+        <button class="btn btn-secondary" style="flex:1" onclick="copyFlowText('short')">📋 复制短版</button>
+        <button class="btn btn-secondary" style="flex:1" onclick="copyFlowText('long')">📋 复制长版</button>
+      </div>
+      <button class="btn btn-primary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
+    `);
+    showToast("文案已复制到剪贴板 📋");
+    return;
   }
+
+  // 正常情况：填入标题和备注
+  titleEl.value = d.shortTitle;
+  noteEl.value = fullText;
+  // 高亮提示
+  titleEl.style.transition = "background 0.3s";
+  noteEl.style.transition = "background 0.3s";
+  titleEl.style.background = "rgba(34,197,94,0.15)";
+  noteEl.style.background = "rgba(34,197,94,0.15)";
+  setTimeout(()=>{
+    titleEl.style.background = "";
+    noteEl.style.background = "";
+  }, 2000);
+
+  // 关闭 AI 弹窗，回到视频编辑弹窗
   closeModal();
-  showToast("已填入标题和备注 ✓");
+  showToast("✓ 已填入标题和备注，请在视频编辑弹窗中查看");
 }
 
 function openAIAssistant(videoId){
