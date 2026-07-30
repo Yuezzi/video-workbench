@@ -2748,88 +2748,59 @@ async function runAIGenerateFlow(){
 }
 
 // ============================================================
-// 公共：构建 DeepSeek prompt（3组风格）
+// 公共：构建 DeepSeek prompt（抖音文案 skill）
 // ============================================================
 function buildCopyPrompt(analysisText, isTranscript){
   const contextLabel = isTranscript ? "用户提供的视频字幕/口播内容" : "视频分析结果";
-  return `你是一个短视频文案专家。你的唯一任务：把用户给的聊天记录或口播内容，写成有温度、有人情味、像朋友聊天一样的短视频文案。
+  return `# Douyin Title Writer
 
-【你的工作方式】
-- 你只写真实的东西，不编造、不夸大、不说套话
-- 你的文字要有画面感，别人读的时候脑子里能出现那个场景
-- 你的文字要有人物，让看的人感觉"这是一个人在说话"，而不是AI在写作文
+你是抖音短视频文案专家。根据用户给的内容，写出适合抖音发布的文案。
 
-【你必须避开的坑】
-- 禁止用：家人们、谁懂啊、救命、点赞关注、宝藏、绝绝子、yyds
-- 禁止用："她说..." 开头（不要每句都是"她说"）
-- 禁止用："那一刻…只是…" 这个句式
-- 禁止在结尾讲大道理（比如"告诉我们…"、"这让我想起…"）
-- 禁止写成新闻稿、产品介绍、宣传文案
+## 工作流程
 
-【你每输出一次，都要包含以下3组】
+1. 先阅读用户给的内容，理解视频主题和受众
+2. 判断视频类型：
+   - 人物访谈：强调经历、选择、信任、细节、情感真实
+   - 海外见闻：强调地点、对比、现场感、当地生活
+   - 商务/创业：强调信任、长期主义、真实困难、合作、执行力
+   - 门店/老板/员工：强调真实评价、服务、温暖、专业、日常细节
+   - 旅行/打卡：强调地点、第一印象、氛围、记忆深刻的画面
+3. 按下面的格式输出
 
-第一组 · 白描风
-特点：不判断、不总结、不升华，只写"眼睛能看到的东西"
-短版：
-标题：一句话，15字以内，要有画面感
-正文：只写动作、画面、场景，不加任何判断句
-长版：
-标题：一句话，20字以内
-正文：3-4句，全部是连贯的场景描写，让画面自己说话
+## 风格规则
 
-第二组 · 金句风
-特点：前面叙事，最后落一句有温度、有力度的话，收在人物身上
-短版：
-标题：一句话，15字以内，要有态度
-正文：1-2句，最后落在一句有温度的话上
-长版：
-标题：一句话，20字以内
-正文：3-4句，前面叙事，最后一句收在人物感受或决定上
+- 文案简洁、真实、易于朗读
+- 用短句，有自然的口语节奏
+- 避免夸大、标题党、硬广
+- 锚定具体细节：地点、人物、字幕内容、物件、现场
+- 可以用对比句式：不是…而是…、不只…更是…、很多人只看到…却不知道…
+- 不要过度解释，文案通常3-6行
+- 不用加话题标签，除非用户特别要求
 
-第三组 · 叙事风
-特点：讲一个完整的小故事，有开始、有动作、有变化
-短版：
-标题：一句话，15字以内，写一个转折或瞬间
-正文：一句话，写人物做了什么决定或发生了什么变化
-长版：
-标题：一句话，20字以内
-正文：4-5句，完整讲一个段落：起因→做了什么→结果如何→人物变化
+## 禁止用词
+家人们、谁懂啊、救命、点赞关注、宝藏、绝绝子、yyds
 
-【这种写法才是对的（模仿这个风格）】
-标题：在迪拜带女儿打拼的她，说了一句大实话
-正文：一个人扛生活，认真又坚定。她说帮到别人比赚钱更踏实。
-
-标题：下午三点，她在工地接客户电话
-正文：戴安全帽，踩碎石，翻笔记本上的户型图。
-
-标题：闺蜜一句话，她去了迪拜
-正文：闺蜜说你去学房产吧。三年后，她成了帮人出海的桥梁。
-
-标题：迪拜三年，她活成了自己的靠山
-正文：没有退路，也从来不找退路。一个人带着女儿，把委屈咽下去，把日子撑起来。
-
-【这种写法是错的（不要这样写）】
-标题：迪拜单亲妈妈的一天（像新闻标题，没画面）
-正文：她咽下委屈扛下压力，最终发现...（太空了，没具体场景）
-标题：在迪拜，她为自己扎根（像口号，不像人在说话）
-
-【每次输出前，你自己检查一遍】
-- 标题是不是有画面感，而不只是在"概括主题"？
-- 正文是不是像人在说话，而不是AI在写作文？
-- 结尾是不是落在"这个人怎样了"，而不是落在一个道理上？
-- 有没有出现上面"禁止用"的任何词或句式？
-- 如果我读了开头，会不会想知道接下来发生了什么？
-
-记住：你要写的不是"文案"，是"让看的人想点进去看的一个瞬间"。
-
-【以下是${contextLabel}】
+## 以下是${contextLabel}
 ${analysisText}
 
-【输出要求（极其重要）】
-必须输出一个JSON对象，包含groups数组，每组有name, shortTitle, shortBody, longTitle, longBody：
-{"groups":[{"name":"白描风","shortTitle":"","shortBody":"","longTitle":"","longBody":""},{"name":"金句风","shortTitle":"","shortBody":"","longTitle":"","longBody":""},{"name":"叙事风","shortTitle":"","shortBody":"","longTitle":"","longBody":""}]}
+## 输出格式（必须严格按这个格式，不要加任何其他内容）
 
-只输出这一个JSON，不要加任何解释文字、markdown标记。`;
+**标题：**
+（一句话主标题，15字以内，有画面感）
+
+**文案：**
+（3-6行短句，像人在说话，结尾落在人物身上）
+
+**封面字：**
+（4-8个字，大字标题，放在封面上最醒目的位置）
+
+**备用标题：**
+
+1. （备选标题1）
+2. （备选标题2）
+3. （备选标题3）
+4. （备选标题4）
+5. （备选标题5）`;
 }
 
 // ============================================================
@@ -2877,38 +2848,68 @@ async function handleCopyResult(copyResult, fallbackText){
   aiFlowResultData = parsed;
 
   // 显示结果
-  showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--green);font-size:13px;font-weight:600">✓ 生成完成 · ${parsed.groups.length}组文案</div>`);
+  showFlowProgress(`<div style="padding:8px;text-align:center;color:var(--green);font-size:13px;font-weight:600">✓ 生成完成</div>`);
 
-  // 渲染3组文案
-  let groupsHtml = '<div style="margin-top:10px">';
-  parsed.groups.forEach((g, i) => {
-    const color = GROUP_COLORS[i % GROUP_COLORS.length];
-    groupsHtml += `
-      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid ${color}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <b style="font-size:13px;color:${color}">组${i+1} · ${esc(g.name)}</b>
-          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowGroup(${i})">📋 复制</button>
+  // 渲染文案结果
+  let resultHtml = '<div style="margin-top:10px">';
+
+  // 主标题
+  resultHtml += `
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #4f7cff">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+        <b style="font-size:12px;color:#4f7cff">📌 标题</b>
+        <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyText('${esc(parsed.title).replace(/'/g,"\\'")}')">📋</button>
+      </div>
+      <div style="font-size:15px;font-weight:700;color:#5a3e2b;line-height:1.5">${esc(parsed.title)}</div>
+    </div>
+  `;
+
+  // 文案
+  if(parsed.caption){
+    resultHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #9b7bd4">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <b style="font-size:12px;color:#9b7bd4">📝 文案</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyText('${esc(parsed.caption).replace(/'/g,"\\'")}')">📋</button>
         </div>
-        <div style="margin-bottom:8px">
-          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">短版</div>
-          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.shortTitle)}</div>
-          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.shortBody)}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">长版</div>
-          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.longTitle)}</div>
-          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.longBody)}</div>
-        </div>
+        <div style="font-size:13px;color:var(--t3);line-height:1.7;white-space:pre-wrap">${esc(parsed.caption)}</div>
       </div>
     `;
-  });
-  groupsHtml += '</div>';
+  }
+
+  // 封面字
+  if(parsed.coverText){
+    resultHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #e8a04c">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <b style="font-size:12px;color:#e8a04c">🖼️ 封面字</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyText('${esc(parsed.coverText).replace(/'/g,"\\'")}')">📋</button>
+        </div>
+        <div style="font-size:16px;font-weight:700;color:#5a3e2b;text-align:center;padding:8px;background:rgba(232,160,76,0.08);border-radius:8px">${esc(parsed.coverText)}</div>
+      </div>
+    `;
+  }
+
+  // 备用标题
+  if(parsed.backupTitles && parsed.backupTitles.length > 0){
+    resultHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #6ba4d9">
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px">
+          <b style="font-size:12px;color:#6ba4d9">💡 备用标题</b>
+          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyAllBackupTitles()">📋 全部</button>
+        </div>
+    `;
+    parsed.backupTitles.forEach((t, i) => {
+      resultHtml += `<div style="font-size:13px;color:var(--t3);padding:4px 0;line-height:1.5">${i+1}. ${esc(t)}</div>`;
+    });
+    resultHtml += `</div>`;
+  }
 
   // 追问输入框
-  groupsHtml += `
+  resultHtml += `
     <div style="margin-top:12px;background:rgba(79,124,255,0.06);border:1px solid rgba(79,124,255,0.15);border-radius:12px;padding:12px">
       <div style="font-size:12px;font-weight:600;color:#4f7cff;margin-bottom:6px">💬 追问修改</div>
-      <textarea id="aiFlowRefineInput" class="fi" style="min-height:60px;resize:vertical;font-size:13px;line-height:1.5" placeholder="告诉AI哪里不满意...&#10;例如：标题太平了，改得更有画面感&#10;例如：第二组结尾换一种说法"></textarea>
+      <textarea id="aiFlowRefineInput" class="fi" style="min-height:60px;resize:vertical;font-size:13px;line-height:1.5" placeholder="告诉AI哪里不满意...&#10;例如：标题改短一点&#10;例如：封面字换一个更有冲击力的"></textarea>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
         <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
@@ -2918,7 +2919,13 @@ async function handleCopyResult(copyResult, fallbackText){
     </div>
   `;
 
-  showFlowResult(groupsHtml);
+  resultHtml += '</div>';
+  showFlowResult(resultHtml);
+}
+
+function copyAllBackupTitles(){
+  if(!aiFlowResultData || !aiFlowResultData.backupTitles) return;
+  copyText(aiFlowResultData.backupTitles.join("\n"));
 }
 
 // 重新选择路线/重新生成
@@ -2950,7 +2957,7 @@ async function refineCopy(){
   }
 
   // 把用户的追问加入历史
-  const refinePrompt = userMessage + `\n\n（请基于上一轮生成的文案，只修改我指出的部分，其他保持不变。仍然输出完整的3组JSON，格式和之前一样：{"groups":[{"name":"","shortTitle":"","shortBody":"","longTitle":"","longBody":""},...]}。只输出JSON，不要加解释。）`;
+  const refinePrompt = userMessage + `\n\n（请基于上一轮的文案，只修改我指出的部分，其他保持不变。仍然按相同格式输出：标题、文案、封面字、备用标题。）`;
   aiFlowChatHistory.push({role: "user", content: refinePrompt});
 
   // 禁用输入框和按钮
@@ -2997,7 +3004,7 @@ async function refineCopy(){
 
   // 解析新结果
   const parsed = parseCopyResult(copyResult);
-  if(!parsed || !parsed.groups || parsed.groups.length === 0){
+  if(!parsed || (!parsed.title && !parsed.caption)){
     // 解析失败，保留旧结果，提示用户
     showToast("AI返回格式异常，请换个说法再试");
     // 移除刚才加的历史
@@ -3009,38 +3016,48 @@ async function refineCopy(){
   inputEl.value = ""; // 清空输入框
 
   // 重新渲染结果（保留追问框）
-  let groupsHtml = '<div style="margin-top:10px">';
-  // 修改提示
-  groupsHtml += `<div style="padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;font-size:12px;color:var(--green);margin-bottom:10px;text-align:center">✓ 已修改 · 第${Math.floor(aiFlowChatHistory.length/2)}轮</div>`;
+  let resultHtml = '<div style="margin-top:10px">';
+  resultHtml += `<div style="padding:6px 10px;background:rgba(34,197,94,0.1);border-radius:8px;font-size:12px;color:var(--green);margin-bottom:10px;text-align:center">✓ 已修改 · 第${Math.floor(aiFlowChatHistory.length/2)}轮</div>`;
 
-  parsed.groups.forEach((g, i) => {
-    const color = GROUP_COLORS[i % GROUP_COLORS.length];
-    groupsHtml += `
-      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid ${color}">
-        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-          <b style="font-size:13px;color:${color}">组${i+1} · ${esc(g.name)}</b>
-          <button class="ai-gen-btn secondary" style="font-size:11px;padding:4px 10px" onclick="copyFlowGroup(${i})">📋 复制</button>
-        </div>
-        <div style="margin-bottom:8px">
-          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">短版</div>
-          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.shortTitle)}</div>
-          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.shortBody)}</div>
-        </div>
-        <div>
-          <div style="font-size:11px;color:var(--t3);margin-bottom:2px">长版</div>
-          <div style="font-size:14px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.longTitle)}</div>
-          <div style="font-size:13px;color:var(--t3);line-height:1.6">${esc(g.longBody)}</div>
-        </div>
+  // 标题
+  resultHtml += `
+    <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #4f7cff">
+      <b style="font-size:12px;color:#4f7cff;display:block;margin-bottom:6px">📌 标题</b>
+      <div style="font-size:15px;font-weight:700;color:#5a3e2b">${esc(parsed.title)}</div>
+    </div>
+  `;
+  // 文案
+  if(parsed.caption){
+    resultHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #9b7bd4">
+        <b style="font-size:12px;color:#9b7bd4;display:block;margin-bottom:6px">📝 文案</b>
+        <div style="font-size:13px;color:var(--t3);line-height:1.7;white-space:pre-wrap">${esc(parsed.caption)}</div>
       </div>
     `;
-  });
-  groupsHtml += '</div>';
+  }
+  // 封面字
+  if(parsed.coverText){
+    resultHtml += `
+      <div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #e8a04c">
+        <b style="font-size:12px;color:#e8a04c;display:block;margin-bottom:6px">🖼️ 封面字</b>
+        <div style="font-size:16px;font-weight:700;color:#5a3e2b;text-align:center;padding:8px;background:rgba(232,160,76,0.08);border-radius:8px">${esc(parsed.coverText)}</div>
+      </div>
+    `;
+  }
+  // 备用标题
+  if(parsed.backupTitles && parsed.backupTitles.length > 0){
+    resultHtml += `<div style="background:var(--bg);border-radius:12px;padding:12px;margin-bottom:10px;border-left:3px solid #6ba4d9"><b style="font-size:12px;color:#6ba4d9;display:block;margin-bottom:6px">💡 备用标题</b>`;
+    parsed.backupTitles.forEach((t, i) => {
+      resultHtml += `<div style="font-size:13px;color:var(--t3);padding:4px 0">${i+1}. ${esc(t)}</div>`;
+    });
+    resultHtml += `</div>`;
+  }
 
-  // 追问输入框（保持不变，供继续追问）
-  groupsHtml += `
+  // 追问输入框
+  resultHtml += `
     <div style="margin-top:12px;background:rgba(79,124,255,0.06);border:1px solid rgba(79,124,255,0.15);border-radius:12px;padding:12px">
       <div style="font-size:12px;font-weight:600;color:#4f7cff;margin-bottom:6px">💬 追问修改</div>
-      <textarea id="aiFlowRefineInput" class="fi" style="min-height:60px;resize:vertical;font-size:13px;line-height:1.5" placeholder="继续告诉AI哪里不满意...&#10;例如：标题太平了，改得更有画面感"></textarea>
+      <textarea id="aiFlowRefineInput" class="fi" style="min-height:60px;resize:vertical;font-size:13px;line-height:1.5" placeholder="继续告诉AI哪里不满意..."></textarea>
       <div style="display:flex;gap:8px;margin-top:8px">
         <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
         <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
@@ -3050,273 +3067,75 @@ async function refineCopy(){
     </div>
   `;
 
-  showFlowResult(groupsHtml);
+  resultHtml += '</div>';
+  showFlowResult(resultHtml);
   showToast("✓ 文案已修改");
 }
 
 // ============================================================
-// 解析 DeepSeek 返回（支持3组格式 + 向后兼容）
+// 解析 DeepSeek 返回（抖音文案格式：标题/文案/封面字/备用标题）
 // ============================================================
 function parseCopyResult(text){
   if(!text) return null;
   let cleaned = text.trim();
-  cleaned = cleaned.replace(/```(?:json)?\s*/g, "").replace(/```\s*/g, "").trim();
+  cleaned = cleaned.replace(/```(?:json|markdown)?\s*/g, "").replace(/```\s*/g, "").trim();
 
-  // 方案1：整体 JSON.parse
-  try{
-    const obj = JSON.parse(cleaned);
-    if(obj && typeof obj === "object"){
-      // 新格式：有 groups 数组
-      if(obj.groups && Array.isArray(obj.groups) && obj.groups.length > 0){
-        return { groups: normalizeCopyGroups(obj.groups) };
-      }
-      // 旧格式：扁平对象
-      const legacy = normalizeCopyObj(obj);
-      if(legacy) return legacyToGroups(legacy);
+  const result = {
+    title: "",
+    caption: "",
+    coverText: "",
+    backupTitles: []
+  };
+
+  // 按 **标题：** **文案：** **封面字：** **备用标题：** 分段
+  const titleMatch = cleaned.match(/\*?\*?标题\*?\*?\s*[:：]\s*\n?(.*?)(?=\n\*?\*?(?:文案|封面字|备用标题|备份标题)\*?\*?\s*[:：]|$)/s);
+  if(titleMatch) result.title = titleMatch[1].trim();
+
+  const captionMatch = cleaned.match(/\*?\*?文案\*?\*?\s*[:：]\s*\n?(.*?)(?=\n\*?\*?(?:封面字|备用标题|备份标题)\*?\*?\s*[:：]|$)/s);
+  if(captionMatch) result.caption = captionMatch[1].trim();
+
+  const coverMatch = cleaned.match(/\*?\*?封面字\*?\*?\s*[:：]\s*\n?(.*?)(?=\n\*?\*?(?:备用标题|备份标题)\*?\*?\s*[:：]|$)/s);
+  if(coverMatch) result.coverText = coverMatch[1].trim();
+
+  // 备用标题：可能用 1. 2. 3. 或 - 或 * 列表
+  const backupMatch = cleaned.match(/\*?\*?(?:备用标题|备份标题)\*?\*?\s*[:：]\s*\n?([\s\S]*?)$/);
+  if(backupMatch){
+    const backupText = backupMatch[1].trim();
+    // 按行分割，提取编号列表
+    const lines = backupText.split("\n");
+    for(let line of lines){
+      line = line.trim();
+      if(!line) continue;
+      // 去掉 1. 2. - * 等前缀
+      const cleaned = line.replace(/^\d+[\.\)]\s*/, "").replace(/^[-*]\s*/, "").trim();
+      if(cleaned && cleaned.length > 1) result.backupTitles.push(cleaned);
     }
-  }catch(e){ /* 不是单个 JSON，继续 */ }
-
-  // 方案2：提取 JSON 块
-  try{
-    const blocks = extractJsonBlocks(cleaned);
-    if(blocks.length >= 1){
-      // 尝试第一个块
-      const obj1 = JSON.parse(blocks[0]);
-      if(obj1.groups && Array.isArray(obj1.groups)){
-        return { groups: normalizeCopyGroups(obj1.groups) };
-      }
-      // 多块合并（旧格式兼容）
-      if(blocks.length >= 2){
-        const obj2 = JSON.parse(blocks[1]);
-        const merged = {};
-        merged.shortTitle = obj1.shortTitle || obj1.title || "";
-        merged.shortBody = obj1.shortBody || obj1.body || obj1.content || "";
-        merged.longTitle = obj2.longTitle || obj2.title || obj1.longTitle || "";
-        merged.longBody = obj2.longBody || obj2.body || obj2.content || obj2.shortBody || "";
-        if(!merged.longTitle && obj1.longTitle) merged.longTitle = obj1.longTitle;
-        if(!merged.longBody && obj1.longBody) merged.longBody = obj1.longBody;
-        if(merged.shortTitle || merged.shortBody || merged.longTitle || merged.longBody){
-          return legacyToGroups(merged);
-        }
-      }
-      // 单块旧格式
-      const legacy = normalizeCopyObj(obj1);
-      if(legacy) return legacyToGroups(legacy);
-    }
-  }catch(e){ /* JSON 提取失败，走方案3 */ }
-
-  // 方案3：纯文本提取（按"组N · 风格名"标记解析）
-  const groups = parseTextGroups(cleaned);
-  if(groups && groups.length > 0){
-    return { groups: normalizeCopyGroups(groups) };
   }
 
-  // 方案4：旧格式文本提取（短版/长版标记）
-  const legacyText = parseLegacyText(cleaned);
-  if(legacyText){
-    return legacyToGroups(legacyText);
+  // 如果标题为空，尝试取第一行
+  if(!result.title && cleaned.length > 5){
+    const firstLine = cleaned.split("\n").find(l => l.trim().length > 0) || "";
+    result.title = firstLine.replace(/\*?\*?标题\*?\*?\s*[:：]\s*/, "").trim();
   }
 
-  // 方案5：兜底 - 整体当一个组
+  // 检查是否提取到有效内容
+  if(result.title || result.caption || result.coverText || result.backupTitles.length > 0){
+    return result;
+  }
+
+  // 兜底：把整个文本当文案
   if(cleaned.length > 5){
     const firstLine = cleaned.split("\n").find(l=>l.trim().length > 0) || "";
-    return legacyToGroups({
-      shortTitle: firstLine.substring(0, 20),
-      shortBody: cleaned,
-      longTitle: firstLine.substring(0, 30),
-      longBody: cleaned
-    });
+    return {
+      title: firstLine.substring(0, 20),
+      caption: cleaned,
+      coverText: firstLine.substring(0, 8),
+      backupTitles: []
+    };
   }
 
   console.error("parseCopyResult: all methods failed, raw:", text.substring(0, 300));
   return null;
-}
-
-// 解析"组N · 风格名"格式的纯文本
-function parseTextGroups(text){
-  const lines = text.split("\n");
-  const groups = [];
-  let currentGroup = null;
-  let mode = ""; // "short" | "long"
-
-  for(let i=0; i<lines.length; i++){
-    const line = lines[i].trim();
-    if(!line) continue;
-
-    // 检测"组N · 风格名"
-    const groupMatch = line.match(/^组\s*(\d+)\s*[·•]\s*(.+)/);
-    if(groupMatch){
-      if(currentGroup) groups.push(currentGroup);
-      currentGroup = { name: groupMatch[2].trim(), shortTitle:"", shortBody:"", longTitle:"", longBody:"" };
-      mode = "";
-      continue;
-    }
-
-    if(!currentGroup) continue;
-
-    // 检测短版/长版标记
-    if(line.match(/^短版[:：]/)){
-      mode = "short";
-      const after = line.replace(/^短版[:：]\s*/, "");
-      if(after && after.length < 30 && !after.match(/^(标题|正文)/)) currentGroup.shortTitle = after;
-      continue;
-    }
-    if(line.match(/^长版[:：]/)){
-      mode = "long";
-      const after = line.replace(/^长版[:：]\s*/, "");
-      if(after && after.length < 40 && !after.match(/^(标题|正文)/)) currentGroup.longTitle = after;
-      continue;
-    }
-
-    // 检测标题/正文标记
-    if(line.match(/^标题[:：]/)){
-      const val = line.replace(/^标题[:：]\s*/, "");
-      if(mode === "long") currentGroup.longTitle = val;
-      else currentGroup.shortTitle = val;
-      continue;
-    }
-    if(line.match(/^正文[:：]/)){
-      const val = line.replace(/^正文[:：]\s*/, "");
-      if(mode === "long") currentGroup.longBody = val;
-      else if(mode === "short") currentGroup.shortBody = val;
-      continue;
-    }
-
-    // 纯文本行
-    if(mode === "short"){
-      if(!currentGroup.shortTitle && line.length <= 20) currentGroup.shortTitle = line;
-      else currentGroup.shortBody = currentGroup.shortBody ? currentGroup.shortBody + line : line;
-    } else if(mode === "long"){
-      if(!currentGroup.longTitle && line.length <= 30) currentGroup.longTitle = line;
-      else currentGroup.longBody = currentGroup.longBody ? currentGroup.longBody + line : line;
-    }
-  }
-  if(currentGroup) groups.push(currentGroup);
-  return groups.length > 0 ? groups : null;
-}
-
-// 旧格式纯文本提取
-function parseLegacyText(cleaned){
-  const lines = cleaned.split("\n");
-  let shortTitle = "", shortBody = "", longTitle = "", longBody = "";
-  let mode = "";
-
-  for(let i=0; i<lines.length; i++){
-    const line = lines[i].trim();
-    if(!line) continue;
-
-    if(line.match(/^(短版|短文案|##\s*短版)/)){
-      mode = "short";
-      const afterColon = line.replace(/^(短版|短文案|##\s*短版)[:：\s]*/, "");
-      if(afterColon && afterColon.length < 30) shortTitle = afterColon;
-      continue;
-    }
-    if(line.match(/^(长版|长文案|##\s*长版)/)){
-      mode = "long";
-      const afterColon = line.replace(/^(长版|长文案|##\s*长版)[:：\s]*/, "");
-      if(afterColon && afterColon.length < 40) longTitle = afterColon;
-      continue;
-    }
-    if(line.match(/^(标题|短标题|长标题)[:：]/)){
-      const val = line.replace(/^(标题|短标题|长标题)[:：]\s*/, "");
-      if(mode === "long" || line.startsWith("长标题")) longTitle = val;
-      else if(mode === "short" || line.startsWith("短标题")) shortTitle = val;
-      else shortTitle = val;
-      continue;
-    }
-    if(line.match(/^(正文|内容|文案)[:：]/)){
-      const val = line.replace(/^(正文|内容|文案)[:：]\s*/, "");
-      if(mode === "long") longBody = val;
-      else if(mode === "short") shortBody = val;
-      continue;
-    }
-    if(mode === "short"){
-      if(!shortTitle && line.length <= 20) shortTitle = line;
-      else shortBody = shortBody ? shortBody + line : line;
-    } else if(mode === "long"){
-      if(!longTitle && line.length <= 30) longTitle = line;
-      else longBody = longBody ? longBody + line : line;
-    }
-  }
-
-  if(shortTitle || shortBody || longTitle || longBody){
-    return {
-      shortTitle: shortTitle || "",
-      shortBody: shortBody || "",
-      longTitle: longTitle || shortTitle || "",
-      longBody: longBody || shortBody || ""
-    };
-  }
-  return null;
-}
-
-// 标准化 groups 数组
-function normalizeCopyGroups(arr){
-  if(!Array.isArray(arr)) return [];
-  return arr.map(g => ({
-    name: String(g.name || "默认风格"),
-    shortTitle: String(g.shortTitle || g.title || g.short_title || ""),
-    shortBody: String(g.shortBody || g.body || g.content || g.short_body || ""),
-    longTitle: String(g.longTitle || g.long_title || g.title || ""),
-    longBody: String(g.longBody || g.long_body || g.body || g.content || "")
-  }));
-}
-
-// 旧格式转 groups 格式
-function legacyToGroups(legacy){
-  if(!legacy) return null;
-  return {
-    groups: [{
-      name: "默认风格",
-      shortTitle: String(legacy.shortTitle || ""),
-      shortBody: String(legacy.shortBody || ""),
-      longTitle: String(legacy.longTitle || legacy.shortTitle || ""),
-      longBody: String(legacy.longBody || legacy.shortBody || "")
-    }]
-  };
-}
-
-// 提取文本中所有顶层 {...} JSON 块
-function extractJsonBlocks(text){
-  const blocks = [];
-  let i = 0;
-  while(i < text.length){
-    if(text[i] === "{"){
-      let depth = 0;
-      let start = i;
-      let inString = false;
-      let escape = false;
-      while(i < text.length){
-        const ch = text[i];
-        if(escape){ escape = false; i++; continue; }
-        if(ch === "\\"){ escape = true; i++; continue; }
-        if(ch === '"'){ inString = !inString; i++; continue; }
-        if(inString){ i++; continue; }
-        if(ch === "{") depth++;
-        if(ch === "}"){
-          depth--;
-          if(depth === 0){
-            blocks.push(text.substring(start, i + 1));
-            break;
-          }
-        }
-        i++;
-      }
-    }
-    i++;
-  }
-  return blocks;
-}
-
-// 标准化单个 JSON 对象为文案结果（旧格式兼容）
-function normalizeCopyObj(obj){
-  if(!obj || typeof obj !== "object") return null;
-  return {
-    shortTitle: String(obj.shortTitle || obj.title || obj.short_title || ""),
-    shortBody: String(obj.shortBody || obj.body || obj.content || obj.short_body || ""),
-    longTitle: String(obj.longTitle || obj.long_title || obj.title || ""),
-    longBody: String(obj.longBody || obj.long_body || obj.body || obj.content || "")
-  };
 }
 
 function copyText(text){
@@ -3338,39 +3157,27 @@ function copyFlowGroup(index){
 
 // 填入视频：弹出组选择
 function fillAIGenerateResult(){
-  if(!aiFlowResultData || !aiFlowResultData.groups || aiFlowResultData.groups.length === 0){
+  if(!aiFlowResultData || !aiFlowResultData.title){
     showToast("没有可填充的结果");
     return;
   }
 
-  let selectHtml = '<div style="margin-bottom:10px;font-size:13px;font-weight:600;color:#5a3e2b;text-align:center">选择要填入的文案组</div>';
-  selectHtml += '<div style="display:flex;gap:8px;flex-wrap:wrap">';
-  aiFlowResultData.groups.forEach((g, i) => {
-    const color = GROUP_COLORS[i % GROUP_COLORS.length];
-    selectHtml += `
-      <button class="btn" style="flex:1;min-width:80px;background:${color}15;border:1.5px solid ${color}40;color:${color};font-size:13px;padding:12px 8px;border-radius:12px;cursor:pointer" onclick="doFillVideo(${i})">
-        <div style="font-size:11px;opacity:.7">组${i+1}</div>
-        <div style="font-weight:700">${esc(g.name)}</div>
-      </button>
-    `;
-  });
-  selectHtml += '</div>';
-  selectHtml += '<button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="cancelFillVideo()">取消</button>';
-
-  showFlowActions(selectHtml);
-}
-
-// 执行填入
-function doFillVideo(groupIndex){
-  if(!aiFlowResultData || !aiFlowResultData.groups || !aiFlowResultData.groups[groupIndex]) return;
-  const g = aiFlowResultData.groups[groupIndex];
+  const d = aiFlowResultData;
   const titleEl = document.getElementById("vTitle");
   const noteEl = document.getElementById("vNote");
-  const fullText = `组${groupIndex+1} · ${g.name}\n短版：${g.shortTitle} ${g.shortBody}\n长版：${g.longTitle} ${g.longBody}`;
+
+  // 构建备注内容：文案 + 封面字 + 备用标题
+  let noteContent = "";
+  if(d.caption) noteContent += `文案：${d.caption}\n\n`;
+  if(d.coverText) noteContent += `封面字：${d.coverText}\n\n`;
+  if(d.backupTitles && d.backupTitles.length > 0){
+    noteContent += `备用标题：\n`;
+    d.backupTitles.forEach((t, i) => { noteContent += `${i+1}. ${t}\n`; });
+  }
 
   // 弹窗未打开
   if(!titleEl || !noteEl){
-    copyText(fullText);
+    copyText(d.title + "\n\n" + noteContent);
     showFlowResult(`
       <div style="margin-top:10px">
         <div style="background:rgba(34,197,94,0.1);border:1px solid rgba(34,197,94,0.3);border-radius:12px;padding:14px;text-align:center">
@@ -3378,24 +3185,18 @@ function doFillVideo(groupIndex){
           <div style="font-size:14px;font-weight:700;color:var(--green);margin-bottom:4px">文案已复制到剪贴板</div>
           <div style="font-size:12px;color:var(--t2);line-height:1.6">视频编辑弹窗未打开，文案已复制。<br>请打开视频编辑弹窗后粘贴到备注栏。</div>
         </div>
-        <div style="background:var(--bg);border-radius:12px;padding:12px;margin-top:10px">
-          <div style="font-size:12px;color:var(--t2);margin-bottom:4px">组${groupIndex+1} · ${esc(g.name)}：</div>
-          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.shortTitle)}</div>
-          <div style="font-size:12px;color:var(--t3);line-height:1.6;margin-bottom:8px">${esc(g.shortBody)}</div>
-          <div style="font-size:13px;font-weight:700;color:#5a3e2b;margin-bottom:2px">${esc(g.longTitle)}</div>
-          <div style="font-size:12px;color:var(--t3);line-height:1.6">${esc(g.longBody)}</div>
-        </div>
       </div>
     `);
     showFlowActions(`
       <button class="btn btn-primary" style="width:100%" onclick="closeModal()">关闭</button>
     `);
+    showToast("文案已复制到剪贴板 📋");
     return;
   }
 
-  // 正常填入
-  titleEl.value = g.shortTitle;
-  noteEl.value = fullText;
+  // 正常填入：标题→vTitle，其他→vNote
+  titleEl.value = d.title;
+  noteEl.value = noteContent.trim();
   titleEl.style.transition = "background 0.3s";
   noteEl.style.transition = "background 0.3s";
   titleEl.style.background = "rgba(34,197,94,0.15)";
@@ -3403,17 +3204,7 @@ function doFillVideo(groupIndex){
   setTimeout(()=>{ titleEl.style.background = ""; noteEl.style.background = ""; }, 2000);
 
   closeModal();
-  showToast(`✓ 已填入标题和备注（组${groupIndex+1} · ${g.name}）`);
-}
-
-function cancelFillVideo(){
-  showFlowActions(`
-    <div class="modal-actions">
-      <button class="btn btn-secondary" style="flex:1" onclick="retryFlow()">🔄 重新生成</button>
-      <button class="btn btn-primary" style="flex:1" onclick="fillAIGenerateResult()">填入视频</button>
-    </div>
-    <button class="btn btn-secondary" style="width:100%;margin-top:8px" onclick="closeModal()">关闭</button>
-  `);
+  showToast("✓ 已填入标题和备注");
 }
 
 function openAIAssistant(videoId){
